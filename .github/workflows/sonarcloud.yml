@@ -1,0 +1,36 @@
+# GitHub Actions workflow for SonarCloud analysis
+# See: https://docs.sonarcloud.io/advanced-setup/github-actions/
+
+name: SonarCloud
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build and analyze on SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: |
+          npm ci || true
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
+
+# Required secrets:
+# - SONAR_TOKEN: Your SonarCloud user token (create in SonarCloud > My Account > Security)
+# - SONAR_ORG: Your SonarCloud organization key

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>IP Inspector · All-in-One IP & CIDR Tool</title>
+    <meta
+      name="description"
+      content="IP Inspector: Minimal, fast, single-file IP & CIDR analysis tool. SEO friendly, mobile ready, GitHub Pages-ready."
+    />
+    <meta
+      name="keywords"
+      content="IP, CIDR, subnet, analysis, network, IPv4, subnet mask, broadcast, IP tool, IP calculator, IP inspector, SEO, GitHub Pages"
+    />
+    <meta name="robots" content="index, follow" />
+
+    <meta name="author" content="Cagatay URESIN (cagatayuresin@gmail.com)" />
+    <meta name="contact" content="cagatayuresin@gmail.com" />
+    <!--
+    Project: IP Inspector
+    Author: Cagatay URESIN (cagatayuresin@gmail.com)
+    GitHub: https://github.com/cagatayuresin/ip-inspector
+    Live:   https://cagatayuresin.github.io/ip-inspector
+    This site is open source and deployed via GitHub Pages.
+  -->
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cagatayuresin.github.io/ip-inspector/" />
+    <meta
+      property="og:title"
+      content="IP Inspector · All-in-One IP & CIDR Tool"
+    />
+    <meta
+      property="og:description"
+      content="Minimal, fast, single-file IP & CIDR analysis tool. SEO friendly, mobile ready, GitHub Pages-ready."
+    />
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://cagatayuresin.github.io/ip-inspector/" />
+    <meta
+      name="twitter:title"
+      content="IP Inspector · All-in-One IP & CIDR Tool"
+    />
+    <meta
+      name="twitter:description"
+      content="Minimal, fast, single-file IP & CIDR analysis tool. SEO friendly, mobile ready, GitHub Pages-ready."
+    />
+
+    <!-- TailwindCSS via CDN for rapid styling (works on GitHub Pages) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tabler Icons CDN -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.34.1/tabler-icons.min.css"
+      integrity="sha512-s0zOeW/zxh8f817uykbgBqmx1dwmdvWwQYamh+lU9NzP8jeQ/ikNPE9dBK+C55A5WUtOetZAI09tLxKIj0r9WQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <!-- Three.js for generative background -->
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Custom CSS for IP Inspector -->
+    <link rel="stylesheet" href="main.css" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+
+  <body>
+    <canvas id="bg3d"></canvas>
+
+    <main class="content">
+      <!-- Header -->
+      <header
+        class="w-full flex items-center justify-between px-6 md:px-10 py-7"
+      >
+        <div class="flex items-center gap-3">
+          <i class="ti ti-hexagon-letter-i text-2xl" aria-hidden="true"></i>
+          <span class="text-sm uppercase tracking-wider text-neutral-300"
+            >IP Inspector</span
+          >
+        </div>
+        <nav class="hidden md:flex items-center gap-4 text-sm text-neutral-300">
+          <a class="minilink" href="#about">About</a>
+          <a class="minilink" href="#help">Help</a>
+        </nav>
+      </header>
+
+      <!-- Centered Input -->
+      <section class="center-wrap">
+        <div class="hero-shell glass">
+          <i class="ti ti-search text-3xl md:text-4xl" aria-hidden="true"></i>
+          <input
+            id="query"
+            class="hero-input mono"
+            placeholder="IP or CIDR"
+            autocomplete="off"
+          />
+          <button id="analyze" class="btn btn-primary ml-auto">
+            <i class="ti ti-player-play" aria-hidden="true"></i
+            ><span>Analyze</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Results -->
+      <section class="px-6 md:px-10 pb-28">
+        <div id="resultWrap" class="mt-10 hidden">
+          <div class="grid-cards">
+            <!-- Each card populated dynamically -->
+          </div>
+          <div class="divider my-6"></div>
+          <div class="flex flex-wrap items-center gap-3">
+            <button id="exportBtn" class="btn">
+              <i class="ti ti-file-type-txt"></i><span>Export .txt</span>
+            </button>
+            <button id="copyBtn" class="btn">
+              <i class="ti ti-clipboard"></i><span>Copy Summary</span>
+            </button>
+            <span id="statusMsg" class="text-sm text-neutral-400"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- History Floating Panel -->
+      <aside class="history">
+        <div class="glass rounded-2xl p-4 w-[92vw] max-w-[520px] shadow-2xl">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <i class="ti ti-history"></i
+              ><span class="text-sm uppercase tracking-wider text-neutral-300"
+                >History</span
+              >
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="clearHistory" class="btn text-sm">
+                <i class="ti ti-trash"></i>Clear All
+              </button>
+            </div>
+          </div>
+          <div
+            id="historyList"
+            class="max-h-[220px] overflow-auto pr-1 text-sm"
+          ></div>
+        </div>
+      </aside>
+
+      <!-- Footer -->
+      <footer class="px-6 md:px-10 pb-10 mt-10">
+        <div class="text-xs text-neutral-400">
+          <section id="about" class="mb-3">
+            <h2 class="font-semibold text-base mb-1">About</h2>
+            <p>
+              IP Inspector is a minimal, fast, single-file IP & CIDR analysis
+              tool for DevOps, NetOps, and anyone working with networks. No
+              backend, no tracking, just pure client-side analysis. Open source
+              and ready for
+              <a
+                class="minilink"
+                href="https://github.com/cagatayuresin/ip-inspector"
+                target="_blank"
+                rel="noopener"
+                >GitHub Pages</a
+              >.
+            </p>
+          </section>
+          <section id="help" class="mb-3">
+            <h2 class="font-semibold text-base mb-1">Help</h2>
+            <ul class="list-disc ml-5">
+              <li>
+                Enter an IPv4 address (e.g.
+                <span class="mono">192.168.1.10</span>) or a CIDR block (e.g.
+                <span class="mono">10.0.0.0/24</span>) in the input box and
+                click <b>Analyze</b> or press <b>Enter</b>.
+              </li>
+              <li>
+                Results will show network, broadcast, mask, class, RFC scope,
+                and more.
+              </li>
+              <li>
+                Use <b>Export .txt</b> to download a summary, or
+                <b>Copy Summary</b> to copy to clipboard.
+              </li>
+              <li>
+                History is stored locally in your browser and can be cleared
+                anytime.
+              </li>
+              <li>
+                For issues or contributions, visit the
+                <a
+                  class="minilink"
+                  href="https://github.com/cagatayuresin/ip-inspector"
+                  target="_blank"
+                  rel="noopener"
+                  >GitHub repository</a
+                >.
+              </li>
+            </ul>
+          </section>
+          <div class="mt-2">
+            Created by
+            <a
+              class="minilink"
+              href="https://github.com/cagatayuresin"
+              target="_blank"
+              rel="noopener"
+              >Cagatay URESIN</a
+            >
+            ·
+            <a
+              class="minilink"
+              href="https://github.com/cagatayuresin/ip-inspector"
+              target="_blank"
+              rel="noopener"
+              >View on GitHub</a
+            >
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <!-- Custom JS for IP Inspector (all logic, UI, and background) -->
+    <script src="main.js"></script>
+  </body>
+</html>

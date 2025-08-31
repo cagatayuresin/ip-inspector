@@ -1,0 +1,155 @@
+/* main.css for IP Inspector
+   Author: Cagatay URESIN (cagatayuresin@gmail.com)
+   Project: https://cagatayuresin.github.io/ip-inspector
+   Custom styles for the app, loaded after TailwindCSS
+*/
+:root {
+  --bg: #0c0d10;
+  --panel: #14161b;
+  --text: #e6e6e6;
+  --muted: #a3a3a3;
+  --line: #2a2e36;
+  --accent: #b91c1c;
+  --accent-2: #ef4444;
+}
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+.mono {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.glass {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.02)
+  );
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+}
+.center-wrap {
+  position: relative;
+  min-height: 65vh;
+  display: grid;
+  place-items: center;
+}
+.hero-input {
+  font-size: clamp(28px, 5.4vw, 56px);
+  line-height: 1.15;
+  background: transparent;
+  outline: none;
+  border: none;
+  color: var(--text);
+  caret-color: var(--accent-2);
+}
+.hero-shell {
+  border-radius: 28px;
+  border: 1px solid var(--line);
+  padding: 24px 28px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  width: min(1200px, 94%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+.hero-shell:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 12px 70px rgba(185, 28, 28, 0.18);
+}
+.btn {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.btn:hover {
+  transform: translateY(-1px);
+}
+.btn-primary {
+  background: linear-gradient(
+    180deg,
+    rgba(239, 68, 68, 0.18),
+    rgba(239, 68, 68, 0.08)
+  );
+  border-color: #3a0f0f;
+}
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
+}
+.card {
+  grid-column: span 4;
+  min-height: 120px;
+  border-radius: 16px;
+  padding: 18px;
+}
+@media (max-width: 1100px) {
+  .card {
+    grid-column: span 6;
+  }
+}
+@media (max-width: 700px) {
+  .card {
+    grid-column: span 12;
+  }
+}
+.label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.value {
+  font-size: 20px;
+  margin-top: 6px;
+}
+.animate-pop {
+  animation: pop 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.history {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 30;
+}
+#bg3d {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+.content {
+  position: relative;
+  z-index: 10;
+}
+.divider {
+  height: 1px;
+  background: var(--line);
+}
+a.minilink {
+  color: var(--muted);
+  border-bottom: 1px dotted var(--muted);
+}
+a.minilink:hover {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
