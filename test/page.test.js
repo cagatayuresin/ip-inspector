@@ -395,12 +395,23 @@ describe("page", () => {
 
   it("uses the fallback particle color when the theme variables are unreadable", () => {
     const page = mount({ reduce: true });
+    const created = [];
+    const Material = page.window.THREE.PointsMaterial;
+    page.window.THREE.PointsMaterial = class extends Material {
+      constructor(options) {
+        super(options);
+        created.push(this);
+      }
+    };
     page.window.getComputedStyle = () => ({
-      getPropertyValue() {
-        return "not-a-number";
+      getPropertyValue(name) {
+        return String(name).includes("opacity") ? "not-a-number" : "";
       },
     });
     page.app.startBackground();
     page.document.dispatchEvent(new page.window.Event("themechange"));
+    assert.equal(created.length > 0, true);
+    assert.equal(created[0].color.value, "#088395");
+    assert.equal(created[0].opacity, 0.6);
   });
 });
