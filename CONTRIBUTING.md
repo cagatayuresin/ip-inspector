@@ -11,7 +11,7 @@ Thank you for considering contributing to this project!
 - **Code Quality & Security:**
   - All code contributions must follow best practices for security and reliability.
   - Write clear, maintainable, and well-documented code.
-  - Add tests for new features or bug fixes when possible.
+  - Add tests for new features or bug fixes when possible. Run them with `node --test`.
 
 - **Design & UI:**
   - Please **do not make changes to the design or UI** (HTML/CSS) unless explicitly requested.

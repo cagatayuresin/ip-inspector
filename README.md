@@ -1,39 +1,47 @@
 # IP Inspector
 
-[![GitHub stars](https://img.shields.io/github/stars/cagatayuresin/ip-inspector?style=social)](https://github.com/cagatayuresin/ip-inspector) [![GitHub forks](https://img.shields.io/github/forks/cagatayuresin/ip-inspector?style=social)](https://github.com/cagatayuresin/ip-inspector) [![GitHub issues](https://img.shields.io/github/issues/cagatayuresin/ip-inspector)](https://github.com/cagatayuresin/ip-inspector/issues) [![MIT License](https://img.shields.io/github/license/cagatayuresin/ip-inspector)](LICENSE) [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-green)](https://cagatayuresin.github.io/ip-inspector/) [![Quality Gate Status](https://sonar.cagatayuresin.com/api/project_badges/measure?project=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b&metric=alert_status&token=sqb_f4ef7dec507c15df28897626318af412910d82d8)](https://sonar.cagatayuresin.com/dashboard?id=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b) [![Security Hotspots](https://sonar.cagatayuresin.com/api/project_badges/measure?project=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b&metric=security_hotspots&token=sqb_f4ef7dec507c15df28897626318af412910d82d8)](https://sonar.cagatayuresin.com/dashboard?id=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b) [![Reliability Issues](https://sonar.cagatayuresin.com/api/project_badges/measure?project=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b&metric=software_quality_reliability_issues&token=sqb_f4ef7dec507c15df28897626318af412910d82d8)](https://sonar.cagatayuresin.com/dashboard?id=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b) [![Maintainability Issues](https://sonar.cagatayuresin.com/api/project_badges/measure?project=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b&metric=software_quality_maintainability_issues&token=sqb_f4ef7dec507c15df28897626318af412910d82d8)](https://sonar.cagatayuresin.com/dashboard?id=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b) [![Security Issues](https://sonar.cagatayuresin.com/api/project_badges/measure?project=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b&metric=software_quality_security_issues&token=sqb_f4ef7dec507c15df28897626318af412910d82d8)](https://sonar.cagatayuresin.com/dashboard?id=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b) [![Reliability Rating](https://sonar.cagatayuresin.com/api/project_badges/measure?project=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b&metric=software_quality_reliability_rating&token=sqb_f4ef7dec507c15df28897626318af412910d82d8)](https://sonar.cagatayuresin.com/dashboard?id=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b) [![Security Rating](https://sonar.cagatayuresin.com/api/project_badges/measure?project=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b&metric=software_quality_security_rating&token=sqb_f4ef7dec507c15df28897626318af412910d82d8)](https://sonar.cagatayuresin.com/dashboard?id=cagatayuresin_ip-inspector_2f778a84-0bcf-4433-8017-6cae2338922b)
+[![GitHub stars](https://img.shields.io/github/stars/cagatayuresin/ip-inspector?style=social)](https://github.com/cagatayuresin/ip-inspector) [![GitHub forks](https://img.shields.io/github/forks/cagatayuresin/ip-inspector?style=social)](https://github.com/cagatayuresin/ip-inspector) [![GitHub issues](https://img.shields.io/github/issues/cagatayuresin/ip-inspector)](https://github.com/cagatayuresin/ip-inspector/issues) [![MIT License](https://img.shields.io/github/license/cagatayuresin/ip-inspector)](LICENSE) [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-green)](https://cagatayuresin.github.io/ip-inspector/)
 
-> Minimal, fast, single-file IP & CIDR analysis tool. No backend, no tracking, just pure client-side analysis. Open source and ready for GitHub Pages.
+IPv4 and CIDR calculator that runs entirely in the browser. No backend, no account, no tracking.
 
 ## Features
 
-- Analyze IPv4 addresses and CIDR blocks
-- Shows network, broadcast, mask, class, RFC scope, and more
-- Export results as .txt or copy summary
-- Local history (browser only)
-- Responsive, mobile-friendly UI
-- No dependencies, no build step
-
-## Icons
-
-This project uses [Tabler Icons](https://tabler.io/icons) for UI icons.
+- IPv4 addresses and CIDR blocks, including `/0`, `/31`, and `/32`
+- Network, broadcast, mask, wildcard, usable range, and host counts
+- Special-purpose ranges: private, shared CGNAT, loopback, link-local, documentation, benchmarking, multicast, and reserved
+- A block that crosses those ranges is marked as mixed
+- Without a prefix, class A/B/C shows the historical classful network and labels it as historical
+- Binary view with host bits marked
+- Export a text report, copy the summary, or copy a single value
+- History stays in this browser
+- No build step
 
 ## Usage
 
-1. Enter an IPv4 address (e.g. `192.168.1.10`) or a CIDR block (e.g. `10.0.0.0/24`).
-2. Click **Analyze** or press **Enter**.
-3. View results, export, or copy summary.
+1. Enter an IPv4 address (`192.168.1.10`) or a CIDR block (`10.0.0.0/24`).
+2. Choose **Analyze** or press **Enter**.
+3. Read the result, export it, or copy it.
 
-## Live Demo
+A prefix is the subnet you mean. The classful section is only a fallback, and only when you leave the prefix out.
+
+## Live demo
 
 [https://cagatayuresin.github.io/ip-inspector/](https://cagatayuresin.github.io/ip-inspector/)
 
+## Development
+
+The calculator is plain JavaScript in `main.js`. Run the tests with Node:
+
+```bash
+node --test
+```
+
 ## Contributing
 
-Pull requests and issues are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) if available.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT. See [LICENSE](LICENSE).
 
----
-Created by [Cagatay URESIN](https://github.com/cagatayuresin)
+Created by [Cagatay URESIN](https://github.com/cagatayuresin).

@@ -3,231 +3,248 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <title>IP Inspector · All-in-One IP & CIDR Tool</title>
+    <title>IP Inspector</title>
     <meta
       name="description"
-      content="IP Inspector: Minimal, fast, single-file IP & CIDR analysis tool. SEO friendly, mobile ready, GitHub Pages-ready."
-    />
-    <meta
-      name="keywords"
-      content="IP, CIDR, subnet, analysis, network, IPv4, subnet mask, broadcast, IP tool, IP calculator, IP inspector, SEO, GitHub Pages"
+      content="IPv4 and CIDR calculator that runs in the browser. Network, broadcast, mask, usable hosts, and special-purpose ranges. Nothing is sent to a server."
     />
     <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0c0d10" />
+    <meta name="author" content="Cagatay URESIN" />
+    <link rel="canonical" href="https://cagatayuresin.github.io/ip-inspector/" />
+    <link rel="icon" href="favicon.ico" />
 
-    <meta name="author" content="Cagatay URESIN (cagatayuresin@gmail.com)" />
-    <meta name="contact" content="cagatayuresin@gmail.com" />
-    <!--
-    Project: IP Inspector
-    Author: Cagatay URESIN (cagatayuresin@gmail.com)
-    GitHub: https://github.com/cagatayuresin/ip-inspector
-    Live:   https://cagatayuresin.github.io/ip-inspector
-    This site is open source and deployed via GitHub Pages.
-  -->
-
-    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://cagatayuresin.github.io/ip-inspector/" />
-    <meta
-      property="og:title"
-      content="IP Inspector · All-in-One IP & CIDR Tool"
-    />
+    <meta property="og:title" content="IP Inspector" />
     <meta
       property="og:description"
-      content="Minimal, fast, single-file IP & CIDR analysis tool. SEO friendly, mobile ready, GitHub Pages-ready."
+      content="IPv4 and CIDR calculator that runs in the browser. Nothing is sent to a server."
     />
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://cagatayuresin.github.io/ip-inspector/" />
-    <meta
-      name="twitter:title"
-      content="IP Inspector · All-in-One IP & CIDR Tool"
-    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="IP Inspector" />
     <meta
       name="twitter:description"
-      content="Minimal, fast, single-file IP & CIDR analysis tool. SEO friendly, mobile ready, GitHub Pages-ready."
+      content="IPv4 and CIDR calculator that runs in the browser. Nothing is sent to a server."
     />
 
-    <!-- TailwindCSS via CDN for rapid styling (works on GitHub Pages) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Tabler Icons CDN -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.34.1/tabler-icons.min.css"
-      integrity="sha512-s0zOeW/zxh8f817uykbgBqmx1dwmdvWwQYamh+lU9NzP8jeQ/ikNPE9dBK+C55A5WUtOetZAI09tLxKIj0r9WQ=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
-    <!-- Three.js for generative background -->
-    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Custom CSS for IP Inspector -->
     <link rel="stylesheet" href="main.css" />
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
   </head>
-
   <body>
-    <canvas id="bg3d"></canvas>
+    <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-mark" viewBox="0 0 24 24">
+        <path
+          d="M12 3.2 19.6 7.6v8.8L12 20.8 4.4 16.4V7.6L12 3.2Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.25" fill="none" stroke="currentColor" stroke-width="1.75" />
+        <path
+          d="M16 16.2 20 20.2"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+        />
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24">
+        <path
+          d="M9 7.2v9.6L17.2 12 9 7.2Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-file" viewBox="0 0 24 24">
+        <path
+          d="M7 4.5h6.2L18 9.2V19.5H7V4.5Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M13 4.8V9.2h4.4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-clipboard" viewBox="0 0 24 24">
+        <rect
+          x="7.5"
+          y="6.5"
+          width="9"
+          height="13"
+          rx="1.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+        />
+        <rect
+          x="9.5"
+          y="4"
+          width="5"
+          height="3.2"
+          rx="1"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+        />
+      </symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="7.25" fill="none" stroke="currentColor" stroke-width="1.75" />
+        <path
+          d="M12 8.5V12l2.8 2"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+        />
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path
+          d="M5 8h14M9.5 8V5.8h5V8M7.8 8l.7 11h6.9l.7-11"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </symbol>
+    </svg>
 
-    <main class="content">
-      <!-- Header -->
-      <header
-        class="w-full flex items-center justify-between px-6 md:px-10 py-7"
-      >
-        <div class="flex items-center gap-3">
-          <i class="ti ti-hexagon-letter-i text-2xl" aria-hidden="true"></i>
-          <span class="text-sm uppercase tracking-wider text-neutral-300"
-            >IP Inspector</span
-          >
-        </div>
-        <nav class="hidden md:flex items-center gap-4 text-sm text-neutral-300">
-          <a class="minilink" href="#about">About</a>
-          <a class="minilink" href="#help">Help</a>
+    <a class="skip" href="#query">Skip to input</a>
+
+    <div class="page">
+      <header class="site-header">
+        <h1 class="brand">
+          <svg class="icon" aria-hidden="true"><use href="#i-mark"></use></svg>
+          IP Inspector
+        </h1>
+        <nav class="site-nav" aria-label="Page">
+          <a href="#about">About</a>
+          <a href="#help">Help</a>
         </nav>
       </header>
 
-      <!-- Centered Input -->
-      <section class="center-wrap">
-        <div class="hero-shell glass">
-          <i class="ti ti-search text-3xl md:text-4xl" aria-hidden="true"></i>
+      <section class="hero" aria-labelledby="inspect-label">
+        <p class="lede">Check an IPv4 address or a CIDR block. Nothing leaves this browser.</p>
+        <form id="inspect-form" class="hero-shell" autocomplete="off">
+          <label id="inspect-label" class="sr-only" for="query">IPv4 address or CIDR</label>
+          <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
           <input
             id="query"
             class="hero-input mono"
-            placeholder="IP or CIDR"
+            name="query"
+            placeholder="192.168.0.0/24"
             autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            enterkeyhint="go"
+            aria-describedby="form-error"
+            aria-invalid="false"
+            autofocus
           />
-          <button id="analyze" class="btn btn-primary ml-auto">
-            <i class="ti ti-player-play" aria-hidden="true"></i
-            ><span>Analyze</span>
+          <button id="analyze" class="btn btn-primary" type="submit">
+            <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>
+            <span>Analyze</span>
           </button>
+        </form>
+        <p id="form-error" class="form-error" role="alert"></p>
+        <div class="examples" id="examples">
+          <button type="button" class="chip" data-query="8.8.8.8">8.8.8.8</button>
+          <button type="button" class="chip" data-query="10.0.0.1">10.0.0.1</button>
+          <button type="button" class="chip" data-query="192.168.1.10/24">192.168.1.10/24</button>
+          <button type="button" class="chip" data-query="172.16.0.1/31">172.16.0.1/31</button>
+          <button type="button" class="chip" data-query="203.0.113.5">203.0.113.5</button>
         </div>
       </section>
 
-      <!-- Results -->
-      <section class="px-6 md:px-10 pb-28">
-        <div id="resultWrap" class="mt-10 hidden">
-          <div class="grid-cards">
-            <!-- Each card populated dynamically -->
-          </div>
-          <div class="divider my-6"></div>
-          <div class="flex flex-wrap items-center gap-3">
-            <button id="exportBtn" class="btn">
-              <i class="ti ti-file-type-txt"></i><span>Export .txt</span>
-            </button>
-            <button id="copyBtn" class="btn">
-              <i class="ti ti-clipboard"></i><span>Copy Summary</span>
-            </button>
-            <span id="statusMsg" class="text-sm text-neutral-400"></span>
-          </div>
+      <section id="results" class="results" hidden aria-live="polite">
+        <div id="result-root"></div>
+        <div class="actions">
+          <button id="export-btn" class="btn" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg>
+            <span>Export .txt</span>
+          </button>
+          <button id="copy-btn" class="btn" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+            <span>Copy summary</span>
+          </button>
+          <span id="status" role="status"></span>
         </div>
       </section>
 
-      <!-- History Floating Panel -->
-      <aside class="history">
-        <div class="glass rounded-2xl p-4 w-[92vw] max-w-[520px] shadow-2xl">
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <i class="ti ti-history"></i
-              ><span class="text-sm uppercase tracking-wider text-neutral-300"
-                >History</span
-              >
-            </div>
-            <div class="flex items-center gap-2">
-              <button id="clearHistory" class="btn text-sm">
-                <i class="ti ti-trash"></i>Clear All
-              </button>
-            </div>
-          </div>
-          <div
-            id="historyList"
-            class="max-h-[220px] overflow-auto pr-1 text-sm"
-          ></div>
+      <details class="history">
+        <summary>
+          <span class="history-title">
+            <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
+            History
+            <span id="history-count" class="count">0</span>
+          </span>
+        </summary>
+        <div class="history-bar">
+          <button id="clear-history" class="btn" type="button">Clear</button>
         </div>
-      </aside>
+        <div id="history-list" class="history-list"></div>
+      </details>
 
-      <!-- Footer -->
-      <footer class="px-6 md:px-10 pb-10 mt-10">
-        <div class="text-xs text-neutral-400">
-          <section id="about" class="mb-3">
-            <h2 class="font-semibold text-base mb-1">About</h2>
-            <p>
-              IP Inspector is a minimal, fast, single-file IP & CIDR analysis
-              tool for DevOps, NetOps, and anyone working with networks. No
-              backend, no tracking, just pure client-side analysis. Open source
-              and ready for
-              <a
-                class="minilink"
-                href="https://github.com/cagatayuresin/ip-inspector"
-                target="_blank"
-                rel="noopener"
-                >GitHub Pages</a
-              >.
-            </p>
-          </section>
-          <section id="help" class="mb-3">
-            <h2 class="font-semibold text-base mb-1">Help</h2>
-            <ul class="list-disc ml-5">
-              <li>
-                Enter an IPv4 address (e.g.
-                <span class="mono">192.168.1.10</span>) or a CIDR block (e.g.
-                <span class="mono">10.0.0.0/24</span>) in the input box and
-                click <b>Analyze</b> or press <b>Enter</b>.
-              </li>
-              <li>
-                Results will show network, broadcast, mask, class, RFC scope,
-                and more.
-              </li>
-              <li>
-                Use <b>Export .txt</b> to download a summary, or
-                <b>Copy Summary</b> to copy to clipboard.
-              </li>
-              <li>
-                History is stored locally in your browser and can be cleared
-                anytime.
-              </li>
-              <li>
-                For issues or contributions, visit the
-                <a
-                  class="minilink"
-                  href="https://github.com/cagatayuresin/ip-inspector"
-                  target="_blank"
-                  rel="noopener"
-                  >GitHub repository</a
-                >.
-              </li>
-            </ul>
-          </section>
-          <div class="mt-2">
-            Created by
-            <a
-              class="minilink"
-              href="https://github.com/cagatayuresin"
-              target="_blank"
-              rel="noopener"
-              >Cagatay URESIN</a
+      <footer class="site-footer">
+        <section id="about">
+          <h2>About</h2>
+          <p>
+            IP Inspector calculates IPv4 addresses and CIDR blocks in your browser. There is no
+            server, no account, and no tracking. The source is
+            <a href="https://github.com/cagatayuresin/ip-inspector" rel="noopener noreferrer"
+              >on GitHub</a
+            >, and a
+            <a href="https://cagatayuresin.github.io/ip-inspector/" rel="noopener noreferrer"
+              >live copy</a
             >
-            ·
-            <a
-              class="minilink"
-              href="https://github.com/cagatayuresin/ip-inspector"
-              target="_blank"
-              rel="noopener"
-              >View on GitHub</a
-            >
-          </div>
-        </div>
+            is published with GitHub Pages.
+          </p>
+        </section>
+        <section id="help">
+          <h2>Help</h2>
+          <ul>
+            <li>
+              Enter an address such as <span class="mono">192.168.1.10</span> or a block such as
+              <span class="mono">10.0.0.0/8</span>, then choose Analyze or press Enter.
+            </li>
+            <li>
+              A prefix is the subnet you mean. Without one, class A, B, and C addresses also show
+              the historical classful network, and that section is labeled as historical.
+            </li>
+            <li>
+              <span class="mono">/31</span> is a point-to-point link: both addresses are usable and
+              there is no broadcast. <span class="mono">/32</span> is a single host.
+            </li>
+            <li>
+              Scope names follow the IPv4 special-purpose ranges: private, shared CGNAT, loopback,
+              link-local, documentation, benchmarking, multicast, and reserved space. A block that
+              crosses those ranges is marked as mixed.
+            </li>
+            <li>
+              Typical gateway is only the usual first usable address. It is not a detected router.
+            </li>
+            <li>Export or copy the whole report, or copy one value from its card.</li>
+            <li>History stays in this browser. Clearing it removes only that list.</li>
+          </ul>
+        </section>
+        <p class="credit">
+          Created by
+          <a href="https://github.com/cagatayuresin" rel="noopener noreferrer">Cagatay URESIN</a>
+        </p>
       </footer>
-    </main>
+    </div>
 
-    <!-- Custom JS for IP Inspector (all logic, UI, and background) -->
     <script src="main.js"></script>
   </body>
 </html>

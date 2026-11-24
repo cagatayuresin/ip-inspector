@@ -1,423 +1,696 @@
-// main.js for IP Inspector
-// Author: Cagatay URESIN (cagatayuresin@gmail.com)
-// Project: https://cagatayuresin.github.io/ip-inspector
-// All logic for IP & CIDR analysis and UI wiring
+"use strict";
 
-// =============================
-//  Utility: IPv4 & CIDR logic
-// =============================
-// All code is plain JS; no build step; works on GitHub Pages.
+// IPv4 and CIDR math for IP Inspector. No network access. Safe to require() from Node.
 
-function ipToInt(ip) {
-  const parts = ip.trim().split(".");
-  if (parts.length !== 4) return null;
-  let n = 0;
-  for (const p of parts) {
-    if (!/^\d+$/.test(p)) return null;
-    const v = Number(p);
-    if (v < 0 || v > 255) return null;
-    n = (n << 8) + v;
-  }
-  return n >>> 0;
-}
+const PUBLIC_SCOPE = {
+  name: "Global unicast",
+  rfc: "",
+  cidr: "",
+  mixed: false,
+};
 
-function intToIp(n) {
-  return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(
-    "."
-  );
-}
+const RANGE_DEFS = [
+  ["0.0.0.0/32", "Unspecified", "RFC 1122"],
+  ["0.0.0.0/8", "This network", "RFC 1122"],
+  ["10.0.0.0/8", "Private", "RFC 1918"],
+  ["100.64.0.0/10", "Shared (CGNAT)", "RFC 6598"],
+  ["127.0.0.0/8", "Loopback", "RFC 1122"],
+  ["169.254.0.0/16", "Link-local", "RFC 3927"],
+  ["172.16.0.0/12", "Private", "RFC 1918"],
+  ["192.0.0.0/24", "IETF protocol assignments", "RFC 6890"],
+  ["192.0.2.0/24", "Documentation (TEST-NET-1)", "RFC 5737"],
+  ["192.88.99.0/24", "6to4 anycast (deprecated)", "RFC 7526"],
+  ["192.168.0.0/16", "Private", "RFC 1918"],
+  ["198.18.0.0/15", "Benchmarking", "RFC 2544"],
+  ["198.51.100.0/24", "Documentation (TEST-NET-2)", "RFC 5737"],
+  ["203.0.113.0/24", "Documentation (TEST-NET-3)", "RFC 5737"],
+  ["224.0.0.0/4", "Multicast", "RFC 1112"],
+  ["240.0.0.0/4", "Reserved", "RFC 1112"],
+  ["255.255.255.255/32", "Limited broadcast", "RFC 919"],
+];
+
+const ROLE_LABEL = {
+  host: "Usable host",
+  network: "Network address",
+  broadcast: "Broadcast address",
+  "point-to-point": "Point-to-point",
+  "host-route": "Host route",
+};
 
 function prefixToMask(prefix) {
-  if (prefix < 0 || prefix > 32) return null;
-  if (prefix === 0) return 0 >>> 0;
+  // JavaScript shift counts are taken modulo 32, so `<< 32` becomes `<< 0`.
+  if (prefix === 0) return 0;
   return (0xffffffff << (32 - prefix)) >>> 0;
 }
 
-function countIPs(prefix) {
-  if (prefix < 0 || prefix > 32) return 0n;
-  return 2n ** BigInt(32 - prefix);
+function intToIp(n) {
+  return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
 }
 
-function maskToString(mask) {
-  return intToIp(mask);
-}
-
-function wildcardFromMask(mask) {
-  return intToIp(~mask >>> 0);
-}
-
-function ipToBinary(ip) {
-  const parts = ip.split(".").map((n) => Number(n));
-  const bin = parts.map((v) => v.toString(2).padStart(8, "0")).join(".");
-  return bin;
-}
-
-function addressClass(ip) {
-  const first = Number(ip.split(".")[0]);
-  if (first <= 127) return "A";
-  if (first <= 191) return "B";
-  if (first <= 223) return "C";
-  if (first <= 239) return "D (Multicast)";
-  return "E (Experimental)";
-}
-
-function isRFC1918(a, b) {
-  if (a === 10) return "Private (RFC1918 10.0.0.0/8)";
-  if (a === 172 && b >= 16 && b <= 31) return "Private (RFC1918 172.16.0.0/12)";
-  if (a === 192 && b === 168) return "Private (RFC1918 192.168.0.0/16)";
-  return null;
-}
-
-function isDocumentation(a, b, c) {
-  if (a === 192 && b === 0 && c === 2)
-    return "TEST-NET-1 (192.0.2.0/24, documentation)";
-  if (a === 198 && (b === 51 || b === 18) && c === 100)
-    return "TEST-NET-2/3 (198.51.100.0/24, documentation)";
-  if (a === 203 && b === 0 && c === 113)
-    return "TEST-NET-3 (203.0.113.0/24, documentation)";
-  return null;
-}
-
-function isSpecial(a, b, c, d) {
-  if (a === 127) return "Loopback (127.0.0.0/8)";
-  if (a === 169 && b === 254) return "Link-Local (169.254.0.0/16)";
-  if (a >= 224 && a <= 239) return "Multicast (224.0.0.0/4)";
-  if (a === 255 && b === 255 && c === 255 && d === 255)
-    return "Limited Broadcast";
-  if (a === 0 && b === 0 && c === 0 && d === 0) return "Unspecified (0.0.0.0)";
-  return null;
-}
-
-function rfcType(ip) {
-  const [a, b, c, d] = ip.split(".").map(Number);
-  const rfc1918 = isRFC1918(a, b);
-  if (rfc1918) return rfc1918;
-  const special = isSpecial(a, b, c, d);
-  if (special) return special;
-  const doc = isDocumentation(a, b, c);
-  if (doc) return doc;
-  return "Public";
-}
-
-function analyze(input) {
-  const q = input.trim();
-  const cidrMatch = q.match(/^\s*(\d+\.\d+\.\d+\.\d+)\s*\/\s*(\d{1,2})\s*$/);
-  if (cidrMatch) {
-    return analyzeCIDR(q, cidrMatch);
+function parseOctets(text) {
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(text)) return null;
+  const parts = text.split(".");
+  const octets = [];
+  for (const part of parts) {
+    const value = Number(part);
+    if (!Number.isInteger(value) || value > 255) return null;
+    octets.push(value);
   }
-  return analyzePlainIP(q);
+  return octets;
 }
 
-function analyzeCIDR(q, cidrMatch) {
-  const baseIp = cidrMatch[1];
-  const prefix = Number(cidrMatch[2]);
-  const baseInt = ipToInt(baseIp);
+function octetsToInt(octets) {
+  return ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
+}
+
+function dottedBinary(ipInt) {
+  const bits = ipInt.toString(2).padStart(32, "0");
+  return [0, 8, 16, 24].map((index) => bits.slice(index, index + 8)).join(".");
+}
+
+function addressClass(ipInt) {
+  const first = ipInt >>> 24;
+  if (first <= 127) return { name: "A", prefix: 8 };
+  if (first <= 191) return { name: "B", prefix: 16 };
+  if (first <= 223) return { name: "C", prefix: 24 };
+  if (first <= 239) return { name: "D", prefix: null };
+  return { name: "E", prefix: null };
+}
+
+function expandRange(def) {
+  const [cidr, name, rfc] = def;
+  const slash = cidr.indexOf("/");
+  const prefix = Number(cidr.slice(slash + 1));
+  const ipInt = octetsToInt(parseOctets(cidr.slice(0, slash)));
   const mask = prefixToMask(prefix);
-  if (baseInt === null || mask === null) throw new Error("Invalid CIDR");
-  const network = (baseInt & mask) >>> 0;
-  const broadcast = (network | (~mask >>> 0)) >>> 0;
-  const total = countIPs(prefix);
-  let firstUsable = null,
-    lastUsable = null,
-    usableCount;
-  if (prefix === 31) {
-    firstUsable = network >>> 0;
-    lastUsable = broadcast >>> 0;
-    usableCount = 2n;
-  } else if (prefix === 32) {
-    firstUsable = network >>> 0;
-    lastUsable = network >>> 0;
-    usableCount = 1n;
-  } else if (total >= 4n) {
-    firstUsable = (network + 1) >>> 0;
-    lastUsable = (broadcast - 1) >>> 0;
-    usableCount = BigInt(
-      Number((broadcast - 1) >>> 0) - Number((network + 1) >>> 0) + 1
-    );
-  } else {
-    firstUsable = (network + 1) >>> 0;
-    lastUsable = (broadcast - 1) >>> 0;
-    usableCount = total >= 2n ? total - 2n : 0n;
-  }
-  const maskStr = maskToString(mask);
-  const wildcard = wildcardFromMask(mask);
+  const start = (ipInt & mask) >>> 0;
   return {
-    kind: "cidr",
-    query: q,
-    ipClass: addressClass(intToIp(network)),
-    rfcType: rfcType(baseIp),
+    name,
+    rfc,
+    cidr,
     prefix,
-    network: intToIp(network),
-    broadcast: intToIp(broadcast),
-    mask: maskStr,
-    wildcard,
-    totalIPs:
-      typeof total === "bigint" || typeof total === "number"
-        ? total.toString()
-        : String(Number(total)),
-    usableHosts: usableCount.toString(),
-    firstUsable: intToIp(firstUsable),
-    lastUsable: intToIp(lastUsable),
-    suggestedGateway: prefix <= 30 ? intToIp(firstUsable) : intToIp(network),
-    baseIPBinary: ipToBinary(baseIp),
-    maskBinary: ipToBinary(maskStr),
+    start,
+    end: (start | (~mask >>> 0)) >>> 0,
+    mixed: false,
   };
 }
 
-function analyzePlainIP(q) {
-  const ipInt = ipToInt(q);
-  if (ipInt === null) throw new Error("Invalid IP");
-  const ipStr = intToIp(ipInt);
-  const prefix = 24;
+const RANGES = RANGE_DEFS.map(expandRange);
+
+function scopeOfAddress(ipInt) {
+  let best = null;
+  for (const range of RANGES) {
+    if (ipInt < range.start || ipInt > range.end) continue;
+    if (!best || range.prefix > best.prefix) best = range;
+  }
+  if (!best) return { name: PUBLIC_SCOPE.name, rfc: "", cidr: "", mixed: false };
+  return { name: best.name, rfc: best.rfc, cidr: best.cidr, mixed: false };
+}
+
+function scopeOfBlock(start, end) {
+  let best = null;
+  for (const range of RANGES) {
+    if (start < range.start || end > range.end) continue;
+    if (!best || range.prefix > best.prefix) best = range;
+  }
+  if (best) return { name: best.name, rfc: best.rfc, cidr: best.cidr, mixed: false };
+  for (const range of RANGES) {
+    if (start <= range.end && end >= range.start) {
+      return { name: "Mixed scopes", rfc: "", cidr: "", mixed: true };
+    }
+  }
+  return { name: PUBLIC_SCOPE.name, rfc: "", cidr: "", mixed: false };
+}
+
+function buildSubnet(ipInt, prefix, mode) {
   const mask = prefixToMask(prefix);
   const network = (ipInt & mask) >>> 0;
   const broadcast = (network | (~mask >>> 0)) >>> 0;
+  const total = 1n << BigInt(32 - prefix);
+  const usable = prefix >= 31 ? total : total - 2n;
+  let role = "host";
+  if (prefix === 32) role = "host-route";
+  else if (prefix === 31) role = "point-to-point";
+  else if (ipInt === network) role = "network";
+  else if (ipInt === broadcast) role = "broadcast";
+
   return {
-    kind: "ip",
-    query: ipStr,
-    ipClass: addressClass(ipStr),
-    rfcType: rfcType(ipStr),
-    mask: maskToString(mask),
-    wildcard: wildcardFromMask(mask),
+    mode,
+    prefix,
+    canonical: intToIp(network) + "/" + prefix,
     network: intToIp(network),
-    broadcast: intToIp(broadcast),
-    firstUsable: intToIp((network + 1) >>> 0),
-    lastUsable: intToIp((broadcast - 1) >>> 0),
-    baseIPBinary: ipToBinary(ipStr),
+    broadcast: prefix >= 31 ? null : intToIp(broadcast),
+    mask: intToIp(mask),
+    wildcard: intToIp(~mask >>> 0),
+    firstUsable: intToIp(prefix >= 31 ? network : (network + 1) >>> 0),
+    lastUsable: intToIp(prefix === 32 ? network : prefix === 31 ? broadcast : (broadcast - 1) >>> 0),
+    usableHosts: usable.toString(),
+    totalAddresses: total.toString(),
+    role,
+    blockScope: scopeOfBlock(network, broadcast),
+    gateway: prefix <= 30 ? intToIp((network + 1) >>> 0) : null,
+    maskBinary: dottedBinary(mask),
+    addressBits: ipInt.toString(2).padStart(32, "0"),
+    maskBits: mask.toString(2).padStart(32, "0"),
   };
 }
 
-// =============================
-//  UI Wiring & Rendering
-// =============================
-
-document.addEventListener("DOMContentLoaded", function () {
-  const qEl = document.getElementById("query");
-  const analyzeBtn = document.getElementById("analyze");
-  const resultWrap = document.getElementById("resultWrap");
-  const grid = resultWrap.querySelector(".grid-cards");
-  const exportBtn = document.getElementById("exportBtn");
-  const copyBtn = document.getElementById("copyBtn");
-  const statusMsg = document.getElementById("statusMsg");
-  const HISTORY_KEY = "ip_inspector_history_v1";
-  const historyList = document.getElementById("historyList");
-  const clearHistoryBtn = document.getElementById("clearHistory");
-
-  function card(label, value) {
-    const el = document.createElement("div");
-    el.className = "card glass animate-pop";
-    el.innerHTML = `<div class="label">${label}</div><div class="value mono">${value}</div>`;
-    return el;
+function analyze(input) {
+  const raw = String(input == null ? "" : input).trim();
+  if (!raw) {
+    throw new Error("Enter an IPv4 address or a CIDR block.");
+  }
+  if (raw.includes(":")) {
+    throw new Error("IPv6 is not supported. Enter an IPv4 address or CIDR block.");
   }
 
-  function show(info) {
-    grid.innerHTML = "";
-    resultWrap.classList.remove("hidden");
-    const parts = [];
-    parts.push(card("Type", info.kind.toUpperCase()));
-    parts.push(card("RFC/Scope", info.rfcType));
-    parts.push(card("Class", info.ipClass));
-    if (info.kind === "cidr") {
-      parts.push(card("CIDR", info.query));
-      parts.push(card("Network", info.network));
-      parts.push(card("Broadcast", info.broadcast));
-      parts.push(card("Mask", `${info.mask} /${info.prefix}`));
-      parts.push(card("Wildcard", info.wildcard));
-      parts.push(card("First usable", info.firstUsable));
-      parts.push(card("Last usable", info.lastUsable));
-      parts.push(card("Usable hosts", info.usableHosts));
-      parts.push(card("Total IPs", info.totalIPs));
-      parts.push(card("Suggested gateway", info.suggestedGateway));
-      parts.push(card("IP (binary)", info.baseIPBinary));
-      parts.push(card("Mask (binary)", info.maskBinary));
-    } else {
-      parts.push(card("IP", info.query));
-      parts.push(card("Network (/24 heuristic)", info.network));
-      parts.push(card("Broadcast (/24 heuristic)", info.broadcast));
-      parts.push(card("Mask (/24)", info.mask));
-      parts.push(card("Wildcard", info.wildcard));
-      parts.push(card("First usable", info.firstUsable));
-      parts.push(card("Last usable", info.lastUsable));
-      parts.push(card("IP (binary)", info.baseIPBinary));
+  const match = raw.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?:\s*\/\s*(\d{1,2}))?$/);
+  if (!match) {
+    throw new Error("That is not a valid IPv4 address or CIDR block.");
+  }
+
+  const octets = parseOctets(match[1]);
+  if (!octets) {
+    throw new Error("That is not a valid IPv4 address.");
+  }
+
+  let prefix = null;
+  if (match[2] !== undefined) {
+    prefix = Number(match[2]);
+    if (prefix > 32) {
+      throw new Error("The prefix must be an integer from 0 to 32.");
     }
-    for (const p of parts) grid.appendChild(p);
   }
 
-  function getHistory() {
+  const ipInt = octetsToInt(octets);
+  const address = intToIp(ipInt);
+  const ipClass = addressClass(ipInt);
+  const hadPrefix = prefix !== null;
+  const subnet = hadPrefix
+    ? buildSubnet(ipInt, prefix, "cidr")
+    : ipClass.prefix === null
+      ? null
+      : buildSubnet(ipInt, ipClass.prefix, "classful");
+
+  return {
+    input: raw,
+    normalized: hadPrefix ? address + "/" + prefix : address,
+    address,
+    hadPrefix,
+    integer: String(ipInt),
+    hex: "0x" + ipInt.toString(16).toUpperCase().padStart(8, "0"),
+    reverseDns: address.split(".").reverse().join(".") + ".in-addr.arpa",
+    className: ipClass.name,
+    classfulPrefix: ipClass.prefix,
+    scope: scopeOfAddress(ipInt),
+    binary: dottedBinary(ipInt),
+    addressBits: ipInt.toString(2).padStart(32, "0"),
+    typedAddress: match[1],
+    subnet,
+  };
+}
+
+function scopeLabel(scope) {
+  return scope.rfc ? scope.name + " · " + scope.rfc : scope.name;
+}
+
+function scopeHint(scope) {
+  if (scope.mixed) return "This block covers more than one kind of address.";
+  if (scope.cidr) return scope.cidr;
+  return "No special-purpose reservation.";
+}
+
+function classHint(name) {
+  if (name === "D") return "Multicast. Classful routing does not apply.";
+  if (name === "E") return "Reserved. Classful routing does not apply.";
+  return "Obsolete for routing. Informational only.";
+}
+
+function pushCard(cards, label, value, hint, extra) {
+  if (value === null || value === undefined) return;
+  cards.push({
+    label,
+    value: String(value),
+    hint: hint || "",
+    wide: Boolean(extra && extra.wide),
+    bits: (extra && extra.bits) || null,
+  });
+}
+
+function present(info) {
+  const addressCards = [];
+  const typedDiffers = info.typedAddress !== info.address;
+  pushCard(
+    addressCards,
+    "Address",
+    info.address,
+    typedDiffers ? "Normalized from " + info.typedAddress : ""
+  );
+  pushCard(addressCards, "Scope", scopeLabel(info.scope), scopeHint(info.scope));
+  pushCard(addressCards, "Class", info.className, classHint(info.className));
+  pushCard(addressCards, "Integer", info.integer, "32-bit unsigned");
+  pushCard(addressCards, "Hexadecimal", info.hex, "");
+  pushCard(addressCards, "Reverse DNS", info.reverseDns, "");
+
+  const groups = [{ title: "Address", note: "", cards: addressCards }];
+  const subnet = info.subnet;
+
+  if (subnet) {
+    const cards = [];
+    let note = "";
+    if (subnet.mode === "classful") {
+      note =
+        "No prefix was entered, so this is the historical classful network. Add a prefix, such as /24, for the subnet you actually mean.";
+    } else if (subnet.prefix === 31) {
+      note =
+        "Point-to-point link (RFC 3021). Both addresses are usable, and there is no broadcast address.";
+    } else if (subnet.prefix === 32) {
+      note = "Host route. One address, with no separate network or broadcast.";
+    }
+
+    pushCard(cards, "Network CIDR", subnet.canonical, "");
+    pushCard(cards, "Role", ROLE_LABEL[subnet.role], "");
+    pushCard(
+      cards,
+      "Prefix",
+      "/" + subnet.prefix,
+      subnet.prefix + " network bits, " + (32 - subnet.prefix) + " host bits"
+    );
+    if (subnet.blockScope.mixed || subnet.blockScope.name !== info.scope.name) {
+      pushCard(cards, "Block scope", scopeLabel(subnet.blockScope), scopeHint(subnet.blockScope));
+    }
+    pushCard(cards, "Network", subnet.network, "");
+    pushCard(cards, "Broadcast", subnet.broadcast, "");
+    pushCard(cards, "Netmask", subnet.mask, "");
+    pushCard(cards, "Wildcard", subnet.wildcard, "");
+    pushCard(cards, "First usable", subnet.firstUsable, "");
+    if (subnet.prefix < 32) pushCard(cards, "Last usable", subnet.lastUsable, "");
+    pushCard(cards, "Usable hosts", subnet.usableHosts, "");
+    pushCard(cards, "Total addresses", subnet.totalAddresses, "");
+    pushCard(
+      cards,
+      "Typical gateway",
+      subnet.gateway,
+      "Usually the first usable address. The protocol does not require it."
+    );
+
+    groups.push({
+      title: subnet.mode === "classful" ? "Classful network" : "Subnet",
+      note,
+      cards,
+    });
+  }
+
+  const bitPrefix = subnet ? subnet.prefix : null;
+  const binaryCards = [];
+  let binaryNote = "";
+  if (bitPrefix === null) binaryNote = "";
+  else if (bitPrefix === 32) binaryNote = "All 32 bits identify this address.";
+  else binaryNote = "Red digits are the host bits.";
+
+  pushCard(binaryCards, "Address bits", info.binary, "", {
+    wide: true,
+    bits: { text: info.addressBits, prefix: bitPrefix },
+  });
+  if (subnet) {
+    pushCard(binaryCards, "Netmask bits", subnet.maskBinary, "", {
+      wide: true,
+      bits: { text: subnet.maskBits, prefix: bitPrefix },
+    });
+  }
+  groups.push({ title: "Binary", note: binaryNote, cards: binaryCards });
+
+  let preface = "";
+  if (!info.hadPrefix && !subnet) {
+    preface =
+      "Class D and E addresses have no classful network. Choose a prefix to calculate one anyway.";
+  }
+
+  return {
+    normalized: info.normalized,
+    address: info.address,
+    hadPrefix: info.hadPrefix,
+    classfulPrefix: info.classfulPrefix,
+    preface,
+    groups,
+  };
+}
+
+function summarize(view) {
+  const lines = ["IP Inspector", "Query: " + view.normalized, ""];
+  if (view.preface) {
+    lines.push(view.preface, "");
+  }
+  for (const group of view.groups) {
+    lines.push(group.title);
+    if (group.note) lines.push(group.note);
+    for (const card of group.cards) {
+      lines.push(card.label + ": " + card.value);
+      if (card.hint) lines.push("  " + card.hint);
+    }
+    lines.push("");
+  }
+  return lines.join("\n").trim() + "\n";
+}
+
+const PREFIX_CHOICES = [8, 16, 24, 25, 30, 31, 32];
+const HISTORY_KEY = "ip_inspector_history_v1";
+const HISTORY_LIMIT = 200;
+
+function init() {
+  const form = document.getElementById("inspect-form");
+  const input = document.getElementById("query");
+  const errorEl = document.getElementById("form-error");
+  const results = document.getElementById("results");
+  const resultRoot = document.getElementById("result-root");
+  const exportBtn = document.getElementById("export-btn");
+  const copyBtn = document.getElementById("copy-btn");
+  const statusEl = document.getElementById("status");
+  const historyList = document.getElementById("history-list");
+  const historyCount = document.getElementById("history-count");
+  const clearBtn = document.getElementById("clear-history");
+  const examples = document.getElementById("examples");
+
+  let statusTimer = 0;
+  let clearTimer = 0;
+  let clearArmed = false;
+  let currentView = null;
+
+  function setStatus(message) {
+    statusEl.textContent = message;
+    window.clearTimeout(statusTimer);
+    if (!message) return;
+    statusTimer = window.setTimeout(function () {
+      statusEl.textContent = "";
+    }, 1600);
+  }
+
+  function resetClear() {
+    clearArmed = false;
+    clearBtn.textContent = "Clear";
+    window.clearTimeout(clearTimer);
+  }
+
+  function showError(message) {
+    errorEl.textContent = message;
+    input.setAttribute("aria-invalid", "true");
+    results.hidden = true;
+    resultRoot.replaceChildren();
+    document.body.classList.remove("has-results");
+    currentView = null;
+  }
+
+  function clearError() {
+    errorEl.textContent = "";
+    input.setAttribute("aria-invalid", "false");
+  }
+
+  async function copyText(text) {
     try {
-      return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-    } catch {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (err) {
+      // Fall through to the textarea path for insecure contexts and denied permissions.
+    }
+    try {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      return ok;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function icon(id) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "icon");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", "#" + id);
+    svg.appendChild(use);
+    return svg;
+  }
+
+  function bitsNode(bits) {
+    const wrap = document.createElement("p");
+    wrap.className = "bits";
+    for (let i = 0; i < bits.text.length; i += 1) {
+      if (i > 0 && i % 8 === 0) wrap.appendChild(document.createTextNode("."));
+      const digit = document.createElement("span");
+      const isHost = bits.prefix !== null && bits.prefix < 32 && i >= bits.prefix;
+      digit.className = isHost ? "bit bit-host" : "bit";
+      digit.textContent = bits.text[i];
+      wrap.appendChild(digit);
+    }
+    return wrap;
+  }
+
+  function renderCard(card) {
+    const article = document.createElement("article");
+    article.className = card.wide ? "card card-wide" : "card";
+
+    const top = document.createElement("div");
+    top.className = "card-top";
+    const heading = document.createElement("h3");
+    heading.className = "label";
+    heading.textContent = card.label;
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "card-copy";
+    copy.setAttribute("aria-label", "Copy " + card.label);
+    copy.appendChild(icon("i-clipboard"));
+    copy.addEventListener("click", async function () {
+      const ok = await copyText(card.value);
+      setStatus(ok ? "Copied " + card.label.toLowerCase() : "Copy failed");
+    });
+    top.append(heading, copy);
+
+    const value = document.createElement("div");
+    value.className = "value";
+    if (card.bits) value.appendChild(bitsNode(card.bits));
+    else value.textContent = card.value;
+
+    article.append(top, value);
+    if (card.hint) {
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = card.hint;
+      article.appendChild(hint);
+    }
+    return article;
+  }
+
+  function renderPrefixChoices(view) {
+    const row = document.createElement("div");
+    row.className = "prefix-row";
+    const label = document.createElement("span");
+    label.textContent = "Calculate with prefix";
+    row.appendChild(label);
+    for (const prefix of PREFIX_CHOICES) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "chip";
+      if (prefix === view.classfulPrefix) button.classList.add("is-current");
+      button.textContent = "/" + prefix;
+      if (prefix === view.classfulPrefix) {
+        button.title = "Historical classful prefix";
+      }
+      button.addEventListener("click", function () {
+        input.value = view.address + "/" + prefix;
+        run();
+      });
+      row.appendChild(button);
+    }
+    return row;
+  }
+
+  function render(view) {
+    resultRoot.replaceChildren();
+    if (view.preface) {
+      const preface = document.createElement("p");
+      preface.className = "note";
+      preface.textContent = view.preface;
+      resultRoot.appendChild(preface);
+    }
+    if (!view.hadPrefix) resultRoot.appendChild(renderPrefixChoices(view));
+
+    for (const group of view.groups) {
+      const section = document.createElement("section");
+      section.className = "result-group";
+      const title = document.createElement("h2");
+      title.className = "group-title";
+      title.textContent = group.title;
+      section.appendChild(title);
+      if (group.note) {
+        const note = document.createElement("p");
+        note.className = "note";
+        note.textContent = group.note;
+        section.appendChild(note);
+      }
+      const grid = document.createElement("div");
+      grid.className = "grid-cards";
+      for (const card of group.cards) grid.appendChild(renderCard(card));
+      section.appendChild(grid);
+      resultRoot.appendChild(section);
+    }
+
+    results.hidden = false;
+    document.body.classList.add("has-results");
+    currentView = view;
+  }
+
+  function loadHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(function (item) {
+          return (
+            item &&
+            typeof item.q === "string" &&
+            typeof item.t === "number" &&
+            item.q.length <= 64 &&
+            /^[\d.\s/]+$/.test(item.q)
+          );
+        })
+        .slice(0, HISTORY_LIMIT);
+    } catch (err) {
       return [];
     }
   }
-  function setHistory(arr) {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(arr.slice(0, 200)));
+
+  function saveHistory(items) {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, HISTORY_LIMIT)));
+    } catch (err) {
+      // Private mode and full storage still leave the calculation usable.
+    }
   }
-  function addHistory(entry) {
-    const h = getHistory();
-    h.unshift({ q: entry, t: Date.now() });
-    setHistory(h);
-    renderHistory();
-  }
+
   function renderHistory() {
-    const h = getHistory();
-    historyList.innerHTML = "";
-    if (h.length === 0) {
-      historyList.innerHTML =
-        '<div class="text-neutral-500">No history yet.</div>';
+    const items = loadHistory();
+    historyCount.textContent = String(items.length);
+    historyList.replaceChildren();
+    if (items.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "muted";
+      empty.textContent = "Nothing here yet.";
+      historyList.appendChild(empty);
       return;
     }
-    for (const item of h) {
-      const row = document.createElement("div");
-      row.className =
-        "flex items-center justify-between py-1 border-b border-transparent hover:border-[var(--line)]";
-      const time = new Date(item.t).toLocaleString();
-      row.innerHTML = `
-        <div class="truncate max-w-[70%]"><span class="mono">${item.q}</span></div>
-        <div class="flex items-center gap-2 text-neutral-400">
-          <span class="hidden sm:inline">${time}</span>
-          <button class="btn text-xs" title="Re-analyze"><i class="ti ti-refresh"></i></button>
-        </div>`;
-      row.querySelector("button").addEventListener("click", () => {
-        qEl.value = item.q;
-        handleAnalyze();
+    for (const item of items) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "history-item";
+      const query = document.createElement("span");
+      query.className = "mono";
+      query.textContent = item.q;
+      const time = document.createElement("time");
+      const when = new Date(item.t);
+      time.dateTime = when.toISOString();
+      time.textContent = when.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
       });
-      historyList.appendChild(row);
+      button.append(query, time);
+      button.addEventListener("click", function () {
+        input.value = item.q;
+        run();
+      });
+      historyList.appendChild(button);
     }
   }
-  clearHistoryBtn.addEventListener("click", () => {
-    localStorage.removeItem(HISTORY_KEY);
+
+  function remember(query) {
+    const items = loadHistory().filter(function (item) {
+      return item.q !== query;
+    });
+    items.unshift({ q: query, t: Date.now() });
+    saveHistory(items);
+    renderHistory();
+  }
+
+  function run() {
+    setStatus("");
+    try {
+      const info = analyze(input.value);
+      const view = present(info);
+      clearError();
+      input.value = info.normalized;
+      render(view);
+      remember(info.normalized);
+    } catch (err) {
+      showError(err.message || "Could not analyze that input.");
+    }
+  }
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    run();
+  });
+
+  examples.addEventListener("click", function (event) {
+    const button = event.target.closest("button[data-query]");
+    if (!button) return;
+    input.value = button.getAttribute("data-query");
+    run();
+  });
+
+  exportBtn.addEventListener("click", function () {
+    if (!currentView) return;
+    const slug = currentView.normalized.replace("/", "-").replace(/[^0-9a-z.-]/gi, "");
+    const blob = new Blob([summarize(currentView)], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "ip-inspector-" + slug + ".txt";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setStatus("Report downloaded");
+  });
+
+  copyBtn.addEventListener("click", async function () {
+    if (!currentView) return;
+    const ok = await copyText(summarize(currentView));
+    setStatus(ok ? "Copied the summary" : "Copy failed");
+  });
+
+  clearBtn.addEventListener("click", function () {
+    if (!clearArmed) {
+      clearArmed = true;
+      clearBtn.textContent = "Confirm clear";
+      window.clearTimeout(clearTimer);
+      clearTimer = window.setTimeout(resetClear, 2500);
+      return;
+    }
+    try {
+      localStorage.removeItem(HISTORY_KEY);
+    } catch (err) {
+      // Ignore storage failures and still clear the list on screen.
+    }
+    resetClear();
     renderHistory();
   });
-  function summarize(info) {
-    const lines = [];
-    lines.push(`IP Inspector Report`);
-    lines.push(`Query: ${info.query}`);
-    lines.push(`Kind: ${info.kind}`);
-    lines.push(`RFC/Scope: ${info.rfcType}`);
-    lines.push(`Class: ${info.ipClass}`);
-    if (info.kind === "cidr") {
-      lines.push(`Network: ${info.network}`);
-      lines.push(`Broadcast: ${info.broadcast}`);
-      lines.push(`Mask: ${info.mask} /${info.prefix}`);
-      lines.push(`Wildcard: ${info.wildcard}`);
-      lines.push(`First usable: ${info.firstUsable}`);
-      lines.push(`Last usable: ${info.lastUsable}`);
-      lines.push(`Usable hosts: ${info.usableHosts}`);
-      lines.push(`Total IPs: ${info.totalIPs}`);
-      lines.push(`Suggested gateway: ${info.suggestedGateway}`);
-      lines.push(`IP (binary): ${info.baseIPBinary}`);
-      lines.push(`Mask (binary): ${info.maskBinary}`);
-    } else {
-      lines.push(`IP: ${info.query}`);
-      lines.push(`Network (/24 heuristic): ${info.network}`);
-      lines.push(`Broadcast (/24 heuristic): ${info.broadcast}`);
-      lines.push(`Mask (/24): ${info.mask}`);
-      lines.push(`Wildcard: ${info.wildcard}`);
-      lines.push(`First usable: ${info.firstUsable}`);
-      lines.push(`Last usable: ${info.lastUsable}`);
-      lines.push(`IP (binary): ${info.baseIPBinary}`);
-    }
-    return lines.join("\n");
-  }
-  function downloadTxt(filename, text) {
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  function handleAnalyze() {
-    statusMsg.textContent = "";
-    try {
-      const info = analyze(qEl.value);
-      show(info);
-      addHistory(qEl.value.trim());
-      statusMsg.textContent = "Analysis complete";
-      setTimeout(() => (statusMsg.textContent = ""), 1600);
-      exportBtn.onclick = () =>
-        downloadTxt(`ip-inspector-${Date.now()}.txt`, summarize(info));
-      copyBtn.onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(summarize(info));
-          statusMsg.textContent = "Copied to clipboard";
-          setTimeout(() => (statusMsg.textContent = ""), 1400);
-        } catch (e) {
-          console.error("Clipboard copy failed:", e);
-          statusMsg.textContent = "Copy failed";
-          setTimeout(() => (statusMsg.textContent = ""), 1400);
-        }
-      };
-      setTimeout(() => {
-        const resultSection = document.getElementById("resultWrap");
-        if (resultSection) {
-          resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 100);
-    } catch (e) {
-      resultWrap.classList.remove("hidden");
-      grid.innerHTML = "";
-      grid.appendChild(card("Error", e.message));
-    }
-  }
-  analyzeBtn.addEventListener("click", handleAnalyze);
-  qEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleAnalyze();
-  });
+
   renderHistory();
-});
+}
 
-// =============================
-//  Three.js background (generative)
-// =============================
-// Minimal particle field with gentle drift. Subtle, not distracting.
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", init);
+}
 
-document.addEventListener("DOMContentLoaded", function () {
-  const canvas = document.getElementById("bg3d");
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(
-    60,
-    window.innerWidth / window.innerHeight,
-    1,
-    1000
-  );
-  camera.position.z = 60;
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true,
-    alpha: true,
-  });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  const COUNT = 1200;
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(COUNT * 3);
-  for (let i = 0; i < COUNT; i++) {
-    positions[i * 3 + 0] = (Math.random() - 0.5) * 160;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 90;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 120;
-  }
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const material = new THREE.PointsMaterial({
-    size: 0.7,
-    color: new THREE.Color(0.9, 0.22, 0.22),
-    transparent: true,
-    opacity: 0.7,
-  });
-  const points = new THREE.Points(geometry, material);
-  scene.add(points);
-  function animate() {
-    requestAnimationFrame(animate);
-    points.rotation.y += 0.0009;
-    points.rotation.x += 0.0003;
-    renderer.render(scene, camera);
-  }
-  animate();
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-});
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { analyze, present, summarize };
+}
