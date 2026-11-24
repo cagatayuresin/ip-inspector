@@ -9,7 +9,23 @@
       content="IPv4 and CIDR calculator that runs in the browser. Network, broadcast, mask, usable hosts, and special-purpose ranges. Nothing is sent to a server."
     />
     <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#0c0d10" />
+    <meta name="theme-color" content="#ffffff" />
+    <script>
+      (function () {
+        var choice = "system";
+        try {
+          choice = localStorage.getItem("ip_inspector_theme") || "system";
+        } catch (e) {}
+        if (choice !== "light" && choice !== "dark") choice = "system";
+        var dark =
+          choice === "dark" ||
+          (choice === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+        document.documentElement.dataset.themeChoice = choice;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", dark ? "#0d1117" : "#ffffff");
+      })();
+    </script>
     <meta name="author" content="Cagatay URESIN" />
     <link rel="canonical" href="https://cagatayuresin.github.io/ip-inspector/" />
     <link rel="icon" href="favicon.ico" />
@@ -52,13 +68,7 @@
         />
       </symbol>
       <symbol id="i-play" viewBox="0 0 24 24">
-        <path
-          d="M9 7.2v9.6L17.2 12 9 7.2Z"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linejoin="round"
-        />
+        <path d="M8.2 5.8v12.4L18.2 12 8.2 5.8Z" fill="currentColor" />
       </symbol>
       <symbol id="i-file" viewBox="0 0 24 24">
         <path
@@ -108,6 +118,44 @@
           stroke-linecap="round"
         />
       </symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3.25" fill="none" stroke="currentColor" stroke-width="1.75" />
+        <path
+          d="M12 3.5v2.2M12 18.3v2.2M4.7 12H2.5M21.5 12h-2.2M6.2 6.2l1.6 1.6M16.2 16.2l1.6 1.6M17.8 6.2l-1.6 1.6M7.8 16.2l-1.6 1.6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+        />
+      </symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24">
+        <path
+          d="M15.5 14.8A6.2 6.2 0 0 1 9.2 5.6 6.3 6.3 0 1 0 15.5 14.8Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linejoin="round"
+        />
+      </symbol>
+      <symbol id="i-monitor" viewBox="0 0 24 24">
+        <rect
+          x="3.5"
+          y="4.5"
+          width="17"
+          height="12"
+          rx="1.6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+        />
+        <path
+          d="M9 19.5h6M12 16.5v3"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+        />
+      </symbol>
       <symbol id="i-trash" viewBox="0 0 24 24">
         <path
           d="M5 8h14M9.5 8V5.8h5V8M7.8 8l.7 11h6.9l.7-11"
@@ -120,6 +168,8 @@
       </symbol>
     </svg>
 
+    <canvas id="bg3d" aria-hidden="true"></canvas>
+
     <a class="skip" href="#query">Skip to input</a>
 
     <div class="page">
@@ -131,6 +181,38 @@
         <nav class="site-nav" aria-label="Page">
           <a href="#about">About</a>
           <a href="#help">Help</a>
+          <div class="theme-switch" role="group" aria-label="Color theme">
+            <button
+              type="button"
+              class="theme-option"
+              data-theme-choice="light"
+              aria-pressed="false"
+              aria-label="Light theme"
+              title="Light"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-sun"></use></svg>
+            </button>
+            <button
+              type="button"
+              class="theme-option"
+              data-theme-choice="dark"
+              aria-pressed="false"
+              aria-label="Dark theme"
+              title="Dark"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-moon"></use></svg>
+            </button>
+            <button
+              type="button"
+              class="theme-option"
+              data-theme-choice="system"
+              aria-pressed="false"
+              aria-label="System theme"
+              title="System"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#i-monitor"></use></svg>
+            </button>
+          </div>
         </nav>
       </header>
 
@@ -153,7 +235,9 @@
             autofocus
           />
           <button id="analyze" class="btn btn-primary" type="submit">
-            <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8.2 5.8v12.4L18.2 12 8.2 5.8Z" fill="currentColor" />
+            </svg>
             <span>Analyze</span>
           </button>
         </form>
@@ -249,6 +333,7 @@
       </footer>
     </div>
 
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
     <script src="main.js"></script>
   </body>
 </html>

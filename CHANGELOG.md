@@ -13,7 +13,8 @@
 
 - Results are grouped into address, subnet, and binary.
 - History sits in the page instead of covering the results.
-- The page no longer loads Tailwind, Three.js, icon fonts, or web fonts at runtime.
+- The page no longer loads Tailwind, icon fonts, or web fonts. The particle field stays.
+- Colors follow the cagatayuresin.com palette, with light, dark, and system themes.
 
 ## [0.1.0] - 2025-08-30
 

@@ -1,16 +1,47 @@
 /* IP Inspector. Loaded as a plain stylesheet. No build step. */
 
 :root {
-  --bg: #0c0d10;
-  --panel: rgba(20, 22, 27, 0.9);
-  --text: #ededed;
-  --muted: #b5b5b5;
-  --line: #2c313a;
-  --accent: #b91c1c;
-  --accent-2: #f87171;
+  --bg: #ffffff;
+  --bg-soft: #f6f7f9;
+  --panel: #ffffff;
+  --text: #1a1d21;
+  --muted: #5c636e;
+  --line: #e6e8eb;
+  --accent: #088395;
+  --accent-soft: #ebf4f6;
+  --on-accent: #ffffff;
+  --glow: rgba(8, 131, 149, 0.14);
+  --glow-2: rgba(8, 131, 149, 0.06);
+  --grid: rgba(26, 29, 33, 0.05);
+  --shadow: rgba(13, 17, 23, 0.06);
+  --focus: rgba(8, 131, 149, 0.22);
+  --error: #b42318;
+  --particle: #088395;
+  --particle-opacity: 0.32;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --page: 1120px;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --bg-soft: #161b22;
+  --panel: #161b22;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --line: #21262d;
+  --accent: #7ab2b2;
+  --accent-soft: #0f2e35;
+  --on-accent: #0d1117;
+  --glow: rgba(122, 178, 178, 0.16);
+  --glow-2: rgba(122, 178, 178, 0.07);
+  --grid: rgba(230, 237, 243, 0.045);
+  --shadow: rgba(0, 0, 0, 0.35);
+  --focus: rgba(122, 178, 178, 0.24);
+  --error: #f0a8a4;
+  --particle: #7ab2b2;
+  --particle-opacity: 0.7;
   color-scheme: dark;
 }
 
@@ -28,8 +59,8 @@ body {
 
 body {
   background:
-    radial-gradient(900px 480px at 85% -10%, rgba(185, 28, 28, 0.22), transparent 55%),
-    radial-gradient(700px 420px at 0% 100%, rgba(185, 28, 28, 0.1), transparent 50%),
+    radial-gradient(900px 480px at 85% -10%, var(--glow), transparent 55%),
+    radial-gradient(700px 420px at 0% 100%, var(--glow-2), transparent 50%),
     var(--bg);
   color: var(--text);
   font-family: var(--sans);
@@ -44,14 +75,14 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
 }
 
 ::selection {
-  background: rgba(248, 113, 113, 0.35);
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 .sprite {
@@ -72,6 +103,15 @@ body::before {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+#bg3d {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .page {
@@ -109,11 +149,20 @@ body::before {
 }
 
 a {
-  color: var(--muted);
+  color: var(--accent);
   text-underline-offset: 3px;
 }
 
 a:hover {
+  color: var(--text);
+}
+
+.site-nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.site-nav a:hover {
   color: var(--text);
 }
 
@@ -146,8 +195,46 @@ a:hover {
 
 .site-nav {
   display: flex;
+  align-items: center;
   gap: 18px;
   font-size: 0.92rem;
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+}
+
+.theme-option {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.theme-option .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.theme-option:hover {
+  color: var(--text);
+}
+
+.theme-option[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .lede {
@@ -165,12 +252,12 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 28px;
   background: var(--panel);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 16px 40px var(--shadow);
 }
 
 .hero-shell:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 12px 70px rgba(185, 28, 28, 0.18);
+  box-shadow: 0 0 0 4px var(--focus);
 }
 
 .hero-input {
@@ -182,17 +269,17 @@ a:hover {
   outline: none;
   background: transparent;
   color: var(--text);
-  caret-color: var(--accent-2);
+  caret-color: var(--accent);
   font-family: var(--mono);
   font-size: clamp(32px, 5vw, 56px);
   line-height: 1.15;
 }
 
 .hero-input::placeholder {
-  color: #6f7580;
+  color: var(--muted);
 }
 
-.hero-shell .icon {
+.hero-shell > .icon {
   width: 1.7rem;
   height: 1.7rem;
   color: var(--muted);
@@ -201,7 +288,7 @@ a:hover {
 .form-error {
   min-height: 1.5em;
   margin: 12px 4px 0;
-  color: #fecaca;
+  color: var(--error);
 }
 
 .form-error:empty {
@@ -228,7 +315,7 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-soft);
   color: var(--muted);
   font-family: var(--mono);
   font-size: 0.92rem;
@@ -236,7 +323,7 @@ a:hover {
 
 .chip:hover {
   color: var(--text);
-  border-color: #5c2a2a;
+  border-color: var(--accent);
 }
 
 .btn {
@@ -247,23 +334,35 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-soft);
   transition: transform 0.12s ease, border-color 0.12s ease;
 }
 
 .btn:hover {
   transform: translateY(-1px);
-  border-color: #4a5160;
+  border-color: var(--accent);
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, rgba(239, 68, 68, 0.28), rgba(185, 28, 28, 0.16));
-  border-color: #5c1d1d;
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
+  color: var(--accent);
   white-space: nowrap;
 }
 
+.btn-primary:hover {
+  background: color-mix(in srgb, var(--accent) 16%, var(--accent-soft));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-primary .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
 :focus-visible {
-  outline: 2px solid var(--accent-2);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -281,7 +380,7 @@ a:hover {
 
 .group-title {
   margin: 28px 0 10px;
-  color: var(--accent-2);
+  color: var(--accent);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -377,7 +476,7 @@ a:hover {
 }
 
 .bit-host {
-  color: var(--accent-2);
+  color: var(--accent);
 }
 
 .actions {
@@ -431,7 +530,7 @@ a:hover {
   justify-content: center;
   padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-soft);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -526,8 +625,13 @@ a:hover {
     width: min(var(--page), calc(100% - 24px));
   }
 
+  .site-header {
+    align-items: flex-start;
+  }
+
   .site-nav {
     gap: 12px;
+    margin-left: auto;
   }
 
   .hero-shell {

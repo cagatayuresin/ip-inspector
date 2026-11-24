@@ -654,8 +654,164 @@ function init() {
   renderHistory();
 }
 
+function particleColor() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--particle").trim();
+  return new THREE.Color(raw || "#088395");
+}
+
+function particleOpacity() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--particle-opacity");
+  const value = Number.parseFloat(raw);
+  return Number.isFinite(value) ? value : 0.6;
+}
+
+const THEME_KEY = "ip_inspector_theme";
+
+function systemPrefersDark() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function applyTheme(choice) {
+  const dark = choice === "dark" || (choice === "system" && systemPrefersDark());
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  document.documentElement.dataset.themeChoice = choice;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", dark ? "#0d1117" : "#ffffff");
+  document.querySelectorAll("[data-theme-choice]").forEach(function (button) {
+    button.setAttribute("aria-pressed", button.getAttribute("data-theme-choice") === choice ? "true" : "false");
+  });
+  document.dispatchEvent(new Event("themechange"));
+}
+
+function initTheme() {
+  const group = document.querySelector(".theme-switch");
+  if (!group) return;
+  const current = document.documentElement.dataset.themeChoice || "system";
+  applyTheme(current);
+  group.addEventListener("click", function (event) {
+    const button = event.target.closest("[data-theme-choice]");
+    if (!button) return;
+    const choice = button.getAttribute("data-theme-choice");
+    try {
+      localStorage.setItem(THEME_KEY, choice);
+    } catch (err) {
+      // The theme still changes for this visit when storage is blocked.
+    }
+    applyTheme(choice);
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+    if (document.documentElement.dataset.themeChoice === "system") applyTheme("system");
+  });
+}
+
+function digitTexture(glyph) {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, size, size);
+  context.fillStyle = "#ffffff";
+  context.font = '600 96px ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace';
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(glyph, size / 2, size / 2 + 6);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  return texture;
+}
+
+function bitCloud(glyph, count) {
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i += 1) {
+    positions[i * 3] = (Math.random() - 0.5) * 160;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 90;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 64 - 30;
+  }
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({
+    size: 1.15,
+    map: digitTexture(glyph),
+    color: particleColor(),
+    transparent: true,
+    opacity: particleOpacity(),
+    depthWrite: false,
+    alphaTest: 0.05,
+  });
+  return new THREE.Points(geometry, material);
+}
+
+function startBackground() {
+  const canvas = document.getElementById("bg3d");
+  if (!canvas || typeof THREE === "undefined") return;
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.z = 60;
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const count = window.innerWidth < 700 ? 420 : 820;
+  let zeros = 0;
+  for (let i = 0; i < count; i += 1) {
+    if (Math.random() < 0.5) zeros += 1;
+  }
+  const field = new THREE.Group();
+  const clouds = [bitCloud("0", zeros), bitCloud("1", count - zeros)];
+  clouds.forEach(function (cloud) {
+    field.add(cloud);
+  });
+  scene.add(field);
+
+  let frame = 0;
+  function render() {
+    renderer.render(scene, camera);
+  }
+  function animate() {
+    frame = window.requestAnimationFrame(animate);
+    if (document.hidden) return;
+    field.rotation.y += 0.0009;
+    field.rotation.x += 0.0003;
+    render();
+  }
+
+  function paintTheme() {
+    const color = particleColor();
+    const opacity = particleOpacity();
+    clouds.forEach(function (cloud) {
+      cloud.material.color.copy(color);
+      cloud.material.opacity = opacity;
+    });
+    render();
+  }
+
+  render();
+  if (!reduced) animate();
+  document.addEventListener("themechange", paintTheme);
+
+  window.addEventListener("resize", function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    if (reduced) render();
+  });
+
+  window.addEventListener("pagehide", function () {
+    if (frame) window.cancelAnimationFrame(frame);
+  });
+}
+
 if (typeof document !== "undefined") {
-  document.addEventListener("DOMContentLoaded", init);
+  document.addEventListener("DOMContentLoaded", function () {
+    init();
+    initTheme();
+    startBackground();
+  });
 }
 
 if (typeof module !== "undefined" && module.exports) {
