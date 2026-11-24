@@ -6,7 +6,7 @@
 
 - CIDR math for `/0`, `/31`, and `/32`, including usable counts and the missing broadcast address.
 - Special-purpose ranges. Documentation, benchmarking, CGNAT, and the rest of the reserved space are no longer mislabeled.
-- A bare address no longer pretends to be a `/24`. Class A/B/C uses the classful mask and says so.
+- A bare address is no longer given a default mask. Subnet math is shown only when a prefix is entered.
 - Block scope is based on the whole subnet, so a block that crosses ranges is marked mixed.
 
 ### Changed

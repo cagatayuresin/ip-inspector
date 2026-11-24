@@ -61,6 +61,19 @@ body::before {
   overflow: hidden;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .page {
   position: relative;
   z-index: 1;
@@ -221,8 +234,7 @@ a:hover {
   font-size: 0.92rem;
 }
 
-.chip:hover,
-.chip.is-current {
+.chip:hover {
   color: var(--text);
   border-color: #5c2a2a;
 }
@@ -286,15 +298,6 @@ a:hover {
   margin: 0 0 12px;
 }
 
-.prefix-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 22px;
-  color: var(--muted);
-}
-
 .grid-cards {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -310,7 +313,7 @@ a:hover {
   background: var(--panel);
 }
 
-.card-wide {
+.card.card-wide {
   grid-column: span 12;
 }
 
@@ -363,9 +366,14 @@ a:hover {
 .bits {
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   margin: 0;
   font-size: 0.98rem;
   letter-spacing: 0.03em;
+}
+
+.octet {
+  white-space: nowrap;
 }
 
 .bit-host {
@@ -528,8 +536,13 @@ a:hover {
     padding: 16px;
   }
 
-  .hero-shell .icon {
+  .hero-shell > .icon {
     display: none;
+  }
+
+  .bits {
+    font-size: 0.82rem;
+    letter-spacing: 0.01em;
   }
 
   .hero-input {

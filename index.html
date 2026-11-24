@@ -143,7 +143,7 @@
             id="query"
             class="hero-input mono"
             name="query"
-            placeholder="192.168.0.0/24"
+            placeholder="IP or CIDR"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"
@@ -191,7 +191,10 @@
           </span>
         </summary>
         <div class="history-bar">
-          <button id="clear-history" class="btn" type="button">Clear</button>
+          <button id="clear-history" class="btn" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg>
+            <span id="clear-label">Clear</span>
+          </button>
         </div>
         <div id="history-list" class="history-list"></div>
       </details>
@@ -219,8 +222,9 @@
               <span class="mono">10.0.0.0/8</span>, then choose Analyze or press Enter.
             </li>
             <li>
-              A prefix is the subnet you mean. Without one, class A, B, and C addresses also show
-              the historical classful network, and that section is labeled as historical.
+              An address on its own shows that address: scope, class, integer, hexadecimal, reverse
+              DNS, and binary. Add a prefix, such as <span class="mono">/24</span>, when you want
+              the subnet.
             </li>
             <li>
               <span class="mono">/31</span> is a point-to-point link: both addresses are usable and

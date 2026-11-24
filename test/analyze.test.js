@@ -41,26 +41,24 @@ describe("analyze", () => {
     assert.equal(info.subnet.blockScope.mixed, false);
   });
 
-  it("uses the classful mask when no prefix is given", () => {
+  it("does not invent a subnet for a bare address", () => {
     const address = analyze("10.1.2.3");
     assert.equal(address.hadPrefix, false);
-    assert.equal(address.subnet.mode, "classful");
-    assert.equal(address.subnet.prefix, 8);
-    assert.equal(address.subnet.network, "10.0.0.0");
-    assert.equal(address.subnet.broadcast, "10.255.255.255");
+    assert.equal(address.subnet, null);
+    assert.equal(address.className, "A");
+    assert.equal(address.scope.name, "Private");
 
     const classB = analyze("172.16.5.4");
-    assert.equal(classB.subnet.prefix, 16);
-    assert.equal(classB.subnet.network, "172.16.0.0");
+    assert.equal(classB.subnet, null);
+    assert.equal(classB.className, "B");
 
     const multicast = analyze("224.0.0.1");
     assert.equal(multicast.subnet, null);
     assert.equal(multicast.scope.name, "Multicast");
   });
 
-  it("keeps an explicit prefix instead of the classful mask", () => {
+  it("calculates a subnet only when a prefix is entered", () => {
     const info = analyze("10.1.2.3/24");
-    assert.equal(info.subnet.mode, "cidr");
     assert.equal(info.subnet.network, "10.1.2.0");
     assert.equal(info.subnet.prefix, 24);
   });
@@ -103,8 +101,10 @@ describe("analyze", () => {
   it("aligns every prefix and keeps the mask width", () => {
     for (let prefix = 0; prefix <= 32; prefix += 1) {
       const info = analyze(`203.0.113.55/${prefix}`);
+      const total = 1n << BigInt(32 - prefix);
       assert.equal(maskOnes(info.subnet.mask), prefix);
-      assert.equal(info.subnet.totalAddresses, (1n << BigInt(32 - prefix)).toString());
+      assert.equal(info.subnet.totalAddresses, total.toString());
+      assert.equal(info.subnet.usableHosts, (prefix >= 31 ? total : total - 2n).toString());
       const again = analyze(`${info.subnet.network}/${prefix}`);
       assert.equal(again.subnet.network, info.subnet.network);
       assert.equal(again.subnet.role === "network" || prefix >= 31, true);
@@ -183,15 +183,21 @@ describe("analyze", () => {
 });
 
 describe("present", () => {
-  it("does not invent a /24 for a class A address", () => {
+  it("shows only the address when no prefix is given", () => {
     const view = present(analyze("10.1.2.3"));
-    assert.equal(view.groups[1].title, "Classful network");
-    assert.equal(card(view, "Network CIDR").value, "10.0.0.0/8");
+    assert.deepEqual(
+      view.groups.map((group) => group.title),
+      ["Address", "Binary"]
+    );
+    assert.equal(card(view, "Address").value, "10.1.2.3");
+    assert.equal(card(view, "Scope").value, "Private · RFC 1918");
+    assert.equal(card(view, "Network CIDR"), null);
     assert.equal(card(view, "Broadcast"), null);
-    assert.match(view.groups[1].note, /historical classful/);
+    assert.equal(card(view, "Usable hosts"), null);
+    assert.equal(card(view, "Netmask bits"), null);
     const text = summarize(view);
-    assert.match(text, /10\.0\.0\.0\/8/);
-    assert.doesNotMatch(text, /heuristic/);
+    assert.match(text, /Address: 10\.1\.2\.3/);
+    assert.doesNotMatch(text, /Usable hosts|Network CIDR|Broadcast:/);
   });
 
   it("omits broadcast on /31 and explains why", () => {
@@ -199,6 +205,7 @@ describe("present", () => {
     assert.equal(card(view, "Broadcast"), null);
     assert.equal(card(view, "Usable hosts").value, "2");
     assert.equal(card(view, "Role").value, "Point-to-point");
+    assert.equal(card(view, "Prefix").hint, "31 network bits, 1 host bit");
     assert.match(view.groups[1].note, /RFC 3021/);
   });
 

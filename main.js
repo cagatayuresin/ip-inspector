@@ -70,11 +70,11 @@ function dottedBinary(ipInt) {
 
 function addressClass(ipInt) {
   const first = ipInt >>> 24;
-  if (first <= 127) return { name: "A", prefix: 8 };
-  if (first <= 191) return { name: "B", prefix: 16 };
-  if (first <= 223) return { name: "C", prefix: 24 };
-  if (first <= 239) return { name: "D", prefix: null };
-  return { name: "E", prefix: null };
+  if (first <= 127) return "A";
+  if (first <= 191) return "B";
+  if (first <= 223) return "C";
+  if (first <= 239) return "D";
+  return "E";
 }
 
 function expandRange(def) {
@@ -122,7 +122,7 @@ function scopeOfBlock(start, end) {
   return { name: PUBLIC_SCOPE.name, rfc: "", cidr: "", mixed: false };
 }
 
-function buildSubnet(ipInt, prefix, mode) {
+function buildSubnet(ipInt, prefix) {
   const mask = prefixToMask(prefix);
   const network = (ipInt & mask) >>> 0;
   const broadcast = (network | (~mask >>> 0)) >>> 0;
@@ -135,7 +135,6 @@ function buildSubnet(ipInt, prefix, mode) {
   else if (ipInt === broadcast) role = "broadcast";
 
   return {
-    mode,
     prefix,
     canonical: intToIp(network) + "/" + prefix,
     network: intToIp(network),
@@ -184,13 +183,7 @@ function analyze(input) {
 
   const ipInt = octetsToInt(octets);
   const address = intToIp(ipInt);
-  const ipClass = addressClass(ipInt);
   const hadPrefix = prefix !== null;
-  const subnet = hadPrefix
-    ? buildSubnet(ipInt, prefix, "cidr")
-    : ipClass.prefix === null
-      ? null
-      : buildSubnet(ipInt, ipClass.prefix, "classful");
 
   return {
     input: raw,
@@ -200,14 +193,17 @@ function analyze(input) {
     integer: String(ipInt),
     hex: "0x" + ipInt.toString(16).toUpperCase().padStart(8, "0"),
     reverseDns: address.split(".").reverse().join(".") + ".in-addr.arpa",
-    className: ipClass.name,
-    classfulPrefix: ipClass.prefix,
+    className: addressClass(ipInt),
     scope: scopeOfAddress(ipInt),
     binary: dottedBinary(ipInt),
     addressBits: ipInt.toString(2).padStart(32, "0"),
     typedAddress: match[1],
-    subnet,
+    subnet: hadPrefix ? buildSubnet(ipInt, prefix) : null,
   };
+}
+
+function plural(count, word) {
+  return count + " " + word + (count === 1 ? "" : "s");
 }
 
 function scopeLabel(scope) {
@@ -258,10 +254,7 @@ function present(info) {
   if (subnet) {
     const cards = [];
     let note = "";
-    if (subnet.mode === "classful") {
-      note =
-        "No prefix was entered, so this is the historical classful network. Add a prefix, such as /24, for the subnet you actually mean.";
-    } else if (subnet.prefix === 31) {
+    if (subnet.prefix === 31) {
       note =
         "Point-to-point link (RFC 3021). Both addresses are usable, and there is no broadcast address.";
     } else if (subnet.prefix === 32) {
@@ -274,7 +267,7 @@ function present(info) {
       cards,
       "Prefix",
       "/" + subnet.prefix,
-      subnet.prefix + " network bits, " + (32 - subnet.prefix) + " host bits"
+      plural(subnet.prefix, "network bit") + ", " + plural(32 - subnet.prefix, "host bit")
     );
     if (subnet.blockScope.mixed || subnet.blockScope.name !== info.scope.name) {
       pushCard(cards, "Block scope", scopeLabel(subnet.blockScope), scopeHint(subnet.blockScope));
@@ -294,11 +287,7 @@ function present(info) {
       "Usually the first usable address. The protocol does not require it."
     );
 
-    groups.push({
-      title: subnet.mode === "classful" ? "Classful network" : "Subnet",
-      note,
-      cards,
-    });
+    groups.push({ title: "Subnet", note, cards });
   }
 
   const bitPrefix = subnet ? subnet.prefix : null;
@@ -320,27 +309,15 @@ function present(info) {
   }
   groups.push({ title: "Binary", note: binaryNote, cards: binaryCards });
 
-  let preface = "";
-  if (!info.hadPrefix && !subnet) {
-    preface =
-      "Class D and E addresses have no classful network. Choose a prefix to calculate one anyway.";
-  }
-
   return {
     normalized: info.normalized,
     address: info.address,
-    hadPrefix: info.hadPrefix,
-    classfulPrefix: info.classfulPrefix,
-    preface,
     groups,
   };
 }
 
 function summarize(view) {
   const lines = ["IP Inspector", "Query: " + view.normalized, ""];
-  if (view.preface) {
-    lines.push(view.preface, "");
-  }
   for (const group of view.groups) {
     lines.push(group.title);
     if (group.note) lines.push(group.note);
@@ -353,7 +330,6 @@ function summarize(view) {
   return lines.join("\n").trim() + "\n";
 }
 
-const PREFIX_CHOICES = [8, 16, 24, 25, 30, 31, 32];
 const HISTORY_KEY = "ip_inspector_history_v1";
 const HISTORY_LIMIT = 200;
 
@@ -369,6 +345,7 @@ function init() {
   const historyList = document.getElementById("history-list");
   const historyCount = document.getElementById("history-count");
   const clearBtn = document.getElementById("clear-history");
+  const clearLabel = document.getElementById("clear-label");
   const examples = document.getElementById("examples");
 
   let statusTimer = 0;
@@ -387,7 +364,7 @@ function init() {
 
   function resetClear() {
     clearArmed = false;
-    clearBtn.textContent = "Clear";
+    clearLabel.textContent = "Clear";
     window.clearTimeout(clearTimer);
   }
 
@@ -444,14 +421,36 @@ function init() {
   function bitsNode(bits) {
     const wrap = document.createElement("p");
     wrap.className = "bits";
-    for (let i = 0; i < bits.text.length; i += 1) {
-      if (i > 0 && i % 8 === 0) wrap.appendChild(document.createTextNode("."));
-      const digit = document.createElement("span");
-      const isHost = bits.prefix !== null && bits.prefix < 32 && i >= bits.prefix;
-      digit.className = isHost ? "bit bit-host" : "bit";
-      digit.textContent = bits.text[i];
-      wrap.appendChild(digit);
+    const groups = [];
+    for (let octet = 0; octet < 4; octet += 1) {
+      const group = document.createElement("span");
+      group.className = "octet";
+      for (let bit = 0; bit < 8; bit += 1) {
+        const index = octet * 8 + bit;
+        const digit = document.createElement("span");
+        const isHost = bits.prefix !== null && bits.prefix < 32 && index >= bits.prefix;
+        digit.className = isHost ? "bit bit-host" : "bit";
+        digit.textContent = bits.text[index];
+        group.appendChild(digit);
+      }
+      groups.push(group);
     }
+    wrap.setAttribute("role", "img");
+    wrap.setAttribute(
+      "aria-label",
+      groups.map((group) => group.textContent).join(".")
+    );
+    groups.forEach(function (group, index) {
+      if (index > 0) {
+        const dot = document.createElement("span");
+        dot.className = "bit-dot";
+        dot.setAttribute("aria-hidden", "true");
+        dot.textContent = ".";
+        wrap.appendChild(dot);
+      }
+      group.setAttribute("aria-hidden", "true");
+      wrap.appendChild(group);
+    });
     return wrap;
   }
 
@@ -490,40 +489,8 @@ function init() {
     return article;
   }
 
-  function renderPrefixChoices(view) {
-    const row = document.createElement("div");
-    row.className = "prefix-row";
-    const label = document.createElement("span");
-    label.textContent = "Calculate with prefix";
-    row.appendChild(label);
-    for (const prefix of PREFIX_CHOICES) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "chip";
-      if (prefix === view.classfulPrefix) button.classList.add("is-current");
-      button.textContent = "/" + prefix;
-      if (prefix === view.classfulPrefix) {
-        button.title = "Historical classful prefix";
-      }
-      button.addEventListener("click", function () {
-        input.value = view.address + "/" + prefix;
-        run();
-      });
-      row.appendChild(button);
-    }
-    return row;
-  }
-
   function render(view) {
     resultRoot.replaceChildren();
-    if (view.preface) {
-      const preface = document.createElement("p");
-      preface.className = "note";
-      preface.textContent = view.preface;
-      resultRoot.appendChild(preface);
-    }
-    if (!view.hadPrefix) resultRoot.appendChild(renderPrefixChoices(view));
-
     for (const group of view.groups) {
       const section = document.createElement("section");
       section.className = "result-group";
@@ -670,7 +637,7 @@ function init() {
   clearBtn.addEventListener("click", function () {
     if (!clearArmed) {
       clearArmed = true;
-      clearBtn.textContent = "Confirm clear";
+      clearLabel.textContent = "Confirm clear";
       window.clearTimeout(clearTimer);
       clearTimer = window.setTimeout(resetClear, 2500);
       return;

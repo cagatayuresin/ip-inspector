@@ -10,8 +10,8 @@ IPv4 and CIDR calculator that runs entirely in the browser. No backend, no accou
 - Network, broadcast, mask, wildcard, usable range, and host counts
 - Special-purpose ranges: private, shared CGNAT, loopback, link-local, documentation, benchmarking, multicast, and reserved
 - A block that crosses those ranges is marked as mixed
-- Without a prefix, class A/B/C shows the historical classful network and labels it as historical
-- Binary view with host bits marked
+- A bare address shows that address only. Subnet details appear when you include a prefix
+- Binary view, with host bits marked once a prefix is present
 - Export a text report, copy the summary, or copy a single value
 - History stays in this browser
 - No build step
@@ -22,7 +22,7 @@ IPv4 and CIDR calculator that runs entirely in the browser. No backend, no accou
 2. Choose **Analyze** or press **Enter**.
 3. Read the result, export it, or copy it.
 
-A prefix is the subnet you mean. The classful section is only a fallback, and only when you leave the prefix out.
+A prefix is the subnet. Leave it out to inspect the address itself.
 
 ## Live demo
 
