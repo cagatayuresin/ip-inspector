@@ -120,6 +120,8 @@ describe("analyze", () => {
 
   it("rejects input that is not an IPv4 target", () => {
     assert.throws(() => analyze(""), /Enter an IPv4/);
+    assert.throws(() => analyze(null), /Enter an IPv4/);
+    assert.throws(() => analyze("   "), /Enter an IPv4/);
     assert.throws(() => analyze("::1"), /IPv6/);
     assert.throws(() => analyze("10.0.0.256"), /not a valid IPv4/);
     assert.throws(() => analyze("10.0.0.1/33"), /0 to 32/);
@@ -213,5 +215,41 @@ describe("present", () => {
     const view = present(analyze("0.0.0.0/8"));
     assert.equal(card(view, "Scope").value, "Unspecified · RFC 1122");
     assert.equal(card(view, "Block scope").value, "This network · RFC 1122");
+  });
+
+  it("describes a public address, a host route, and a mixed block", () => {
+    const publicView = present(analyze("8.8.8.8/24"));
+    assert.equal(publicView.groups[1].note, "");
+    assert.equal(card(publicView, "Scope").value, "Global unicast");
+    assert.equal(card(publicView, "Scope").hint, "No special-purpose reservation.");
+    assert.equal(card(publicView, "Block scope"), null);
+    assert.equal(card(publicView, "Class").hint, "Obsolete for routing. Informational only.");
+    assert.equal(card(publicView, "Prefix").hint, "24 network bits, 8 host bits");
+    assert.equal(card(publicView, "Address").hint, "");
+    assert.equal(publicView.groups[2].note, "Red digits are the host bits.");
+
+    const normalized = present(analyze("192.168.001.010/24"));
+    assert.equal(card(normalized, "Address").hint, "Normalized from 192.168.001.010");
+
+    const host = present(analyze("10.0.0.1/32"));
+    assert.match(host.groups[1].note, /Host route/);
+    assert.equal(card(host, "Prefix").hint, "32 network bits, 0 host bits");
+    assert.equal(card(host, "Last usable"), null);
+    assert.equal(card(host, "Typical gateway"), null);
+    assert.equal(host.groups[2].note, "All 32 bits identify this address.");
+
+    const one = present(analyze("203.0.113.5/1"));
+    assert.equal(card(one, "Prefix").hint, "1 network bit, 31 host bits");
+
+    const mixed = present(analyze("8.8.8.8/0"));
+    assert.equal(card(mixed, "Block scope").value, "Mixed scopes");
+    assert.equal(card(mixed, "Block scope").hint, "This block covers more than one kind of address.");
+
+    assert.equal(card(present(analyze("224.0.0.1")), "Class").hint, "Multicast. Classful routing does not apply.");
+    assert.equal(card(present(analyze("240.0.0.1")), "Class").hint, "Reserved. Classful routing does not apply.");
+
+    const text = summarize(publicView);
+    assert.match(text, /Subnet/);
+    assert.match(text, /24 network bits, 8 host bits/);
   });
 });

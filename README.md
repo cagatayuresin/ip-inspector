@@ -30,11 +30,15 @@ A prefix is the subnet. Leave it out to inspect the address itself.
 
 ## Development
 
-The calculator is plain JavaScript in `main.js`. Run the tests with Node:
+The calculator is plain JavaScript in `main.js`. There is no build step. The page does not depend on the packages below; they are only for checks.
 
 ```bash
-node --test
+npm ci
+npm test
+npm run check
 ```
+
+`npm run check` runs ESLint, Stylelint, HTML-validate, and the tests. Pull requests run the same checks. `npm test` fails if line, branch, or function coverage of `main.js` drops below 90%. GitHub Actions also runs [CodeQL](.github/workflows/codeql.yml). SonarCloud reads the repository on its own and is not part of this pipeline.
 
 ## Contributing
 

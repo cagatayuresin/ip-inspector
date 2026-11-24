@@ -1,0 +1,27 @@
+{
+  "name": "ip-inspector",
+  "version": "0.2.0",
+  "private": true,
+  "description": "IPv4 and CIDR calculator that runs in the browser.",
+  "scripts": {
+    "test": "node --test --experimental-test-coverage --test-coverage-include=**/main.js --test-coverage-exclude=**/node_modules/** --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90",
+    "lint:js": "eslint .",
+    "lint:css": "stylelint \"main.css\"",
+    "lint:html": "html-validate index.html",
+    "lint": "npm run lint:js && npm run lint:css && npm run lint:html",
+    "check": "npm run lint && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "eslint-plugin-html": "^8.2.1",
+    "globals": "^17.14.0",
+    "html-validate": "^11.21.1",
+    "jsdom": "^31.0.1",
+    "stylelint": "^18.1.0",
+    "stylelint-config-standard": "^41.1.0"
+  }
+}

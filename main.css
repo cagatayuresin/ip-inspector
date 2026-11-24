@@ -1,26 +1,28 @@
-/* IP Inspector. Loaded as a plain stylesheet. No build step. */
+/* IP Inspector. Loaded as a plain stylesheet. No build step.
+   Color tokens follow cagatayuresin.com. data-theme on the root swaps the set. */
 
 :root {
-  --bg: #ffffff;
+  --bg: #fff;
   --bg-soft: #f6f7f9;
-  --panel: #ffffff;
+  --panel: #fff;
   --text: #1a1d21;
   --muted: #5c636e;
   --line: #e6e8eb;
   --accent: #088395;
   --accent-soft: #ebf4f6;
-  --on-accent: #ffffff;
-  --glow: rgba(8, 131, 149, 0.14);
-  --glow-2: rgba(8, 131, 149, 0.06);
-  --grid: rgba(26, 29, 33, 0.05);
-  --shadow: rgba(13, 17, 23, 0.06);
-  --focus: rgba(8, 131, 149, 0.22);
+  --on-accent: #fff;
+  --glow: rgb(8 131 149 / 14%);
+  --glow-2: rgb(8 131 149 / 6%);
+  --grid: rgb(26 29 33 / 5%);
+  --shadow: rgb(13 17 23 / 6%);
+  --focus: rgb(8 131 149 / 22%);
   --error: #b42318;
   --particle: #088395;
   --particle-opacity: 0.32;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --page: 1120px;
+
   color-scheme: light;
 }
 
@@ -34,14 +36,15 @@
   --accent: #7ab2b2;
   --accent-soft: #0f2e35;
   --on-accent: #0d1117;
-  --glow: rgba(122, 178, 178, 0.16);
-  --glow-2: rgba(122, 178, 178, 0.07);
-  --grid: rgba(230, 237, 243, 0.045);
-  --shadow: rgba(0, 0, 0, 0.35);
-  --focus: rgba(122, 178, 178, 0.24);
+  --glow: rgb(122 178 178 / 16%);
+  --glow-2: rgb(122 178 178 / 7%);
+  --grid: rgb(230 237 243 / 4.5%);
+  --shadow: rgb(0 0 0 / 35%);
+  --focus: rgb(122 178 178 / 24%);
   --error: #f0a8a4;
   --particle: #7ab2b2;
   --particle-opacity: 0.7;
+
   color-scheme: dark;
 }
 
@@ -99,7 +102,6 @@ body::before {
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
@@ -614,13 +616,13 @@ a:hover {
   margin-top: 12px;
 }
 
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .card {
     grid-column: span 6;
   }
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .page {
     width: min(var(--page), calc(100% - 24px));
   }

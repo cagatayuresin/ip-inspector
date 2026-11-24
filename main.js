@@ -1,7 +1,9 @@
 "use strict";
 
-// IPv4 and CIDR math for IP Inspector. No network access. Safe to require() from Node.
+// IP Inspector. The calculator below is pure and is what Node tests import.
+// The page wiring under init() runs only in the browser. Nothing is sent anywhere.
 
+// An address that sits in none of the special-purpose ranges below.
 const PUBLIC_SCOPE = {
   name: "Global unicast",
   rfc: "",
@@ -9,6 +11,8 @@ const PUBLIC_SCOPE = {
   mixed: false,
 };
 
+// IPv4 special-purpose ranges. A longer prefix wins when ranges nest,
+// so 192.0.2.0/24 is documentation rather than the wider 192.0.0.0/24.
 const RANGE_DEFS = [
   ["0.0.0.0/32", "Unspecified", "RFC 1122"],
   ["0.0.0.0/8", "This network", "RFC 1122"],
@@ -60,6 +64,8 @@ function parseOctets(text) {
 }
 
 function octetsToInt(octets) {
+  // >>> 0 keeps the result an unsigned 32-bit value. The high octet's shift
+  // would otherwise set the sign bit and turn the address negative.
   return ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
 }
 
@@ -68,6 +74,7 @@ function dottedBinary(ipInt) {
   return [0, 8, 16, 24].map((index) => bits.slice(index, index + 8)).join(".");
 }
 
+// Classful names are informational. Routing has not used them for decades.
 function addressClass(ipInt) {
   const first = ipInt >>> 24;
   if (first <= 127) return "A";
@@ -97,6 +104,7 @@ function expandRange(def) {
 
 const RANGES = RANGE_DEFS.map(expandRange);
 
+// The most specific special range that contains this one address.
 function scopeOfAddress(ipInt) {
   let best = null;
   for (const range of RANGES) {
@@ -107,6 +115,8 @@ function scopeOfAddress(ipInt) {
   return { name: best.name, rfc: best.rfc, cidr: best.cidr, mixed: false };
 }
 
+// A block inherits a scope only when it sits entirely inside that range.
+// Overlapping a range without being contained by it is mixed. Otherwise it is global.
 function scopeOfBlock(start, end) {
   let best = null;
   for (const range of RANGES) {
@@ -126,6 +136,7 @@ function buildSubnet(ipInt, prefix) {
   const mask = prefixToMask(prefix);
   const network = (ipInt & mask) >>> 0;
   const broadcast = (network | (~mask >>> 0)) >>> 0;
+  // BigInt so a /0 count (2^32) is exact. /31 and /32 have no reserved ends (RFC 3021).
   const total = 1n << BigInt(32 - prefix);
   const usable = prefix >= 31 ? total : total - 2n;
   let role = "host";
@@ -147,6 +158,7 @@ function buildSubnet(ipInt, prefix) {
     totalAddresses: total.toString(),
     role,
     blockScope: scopeOfBlock(network, broadcast),
+    // Convention only: the first usable address. This is not a detected router.
     gateway: prefix <= 30 ? intToIp((network + 1) >>> 0) : null,
     maskBinary: dottedBinary(mask),
     addressBits: ipInt.toString(2).padStart(32, "0"),
@@ -154,6 +166,8 @@ function buildSubnet(ipInt, prefix) {
   };
 }
 
+// A bare address has no subnet. A prefix is used only when the visitor typed one.
+// Leading zeros are decimal, not octal: 010 is 10.
 function analyze(input) {
   const raw = String(input == null ? "" : input).trim();
   if (!raw) {
@@ -198,6 +212,7 @@ function analyze(input) {
     binary: dottedBinary(ipInt),
     addressBits: ipInt.toString(2).padStart(32, "0"),
     typedAddress: match[1],
+    // null, not a guessed mask, when the input had no slash.
     subnet: hadPrefix ? buildSubnet(ipInt, prefix) : null,
   };
 }
@@ -233,6 +248,8 @@ function pushCard(cards, label, value, hint, extra) {
   });
 }
 
+// Turn an analysis into the groups the page renders. Cards with a null value
+// are skipped, which is how /31 and /32 omit the broadcast address.
 function present(info) {
   const addressCards = [];
   const typedDiffers = info.typedAddress !== info.address;
@@ -269,6 +286,7 @@ function present(info) {
       "/" + subnet.prefix,
       plural(subnet.prefix, "network bit") + ", " + plural(32 - subnet.prefix, "host bit")
     );
+    // The address and the block can disagree; 0.0.0.0/8 is one address inside a wider range.
     if (subnet.blockScope.mixed || subnet.blockScope.name !== info.scope.name) {
       pushCard(cards, "Block scope", scopeLabel(subnet.blockScope), scopeHint(subnet.blockScope));
     }
@@ -290,12 +308,12 @@ function present(info) {
     groups.push({ title: "Subnet", note, cards });
   }
 
+  // Host bits are marked only once a prefix exists. A bare address is all identity.
   const bitPrefix = subnet ? subnet.prefix : null;
   const binaryCards = [];
-  let binaryNote = "";
+  let binaryNote = "Red digits are the host bits.";
   if (bitPrefix === null) binaryNote = "";
   else if (bitPrefix === 32) binaryNote = "All 32 bits identify this address.";
-  else binaryNote = "Red digits are the host bits.";
 
   pushCard(binaryCards, "Address bits", info.binary, "", {
     wide: true,
@@ -333,6 +351,7 @@ function summarize(view) {
 const HISTORY_KEY = "ip_inspector_history_v1";
 const HISTORY_LIMIT = 200;
 
+// Bind the form, results, and history. Values go in with textContent, never HTML.
 function init() {
   const form = document.getElementById("inspect-form");
   const input = document.getElementById("query");
@@ -382,13 +401,14 @@ function init() {
     input.setAttribute("aria-invalid", "false");
   }
 
+  // Clipboard API where the page is a secure context; a hidden field otherwise.
   async function copyText(text) {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
         return true;
       }
-    } catch (err) {
+    } catch {
       // Fall through to the textarea path for insecure contexts and denied permissions.
     }
     try {
@@ -402,7 +422,7 @@ function init() {
       const ok = document.execCommand("copy");
       area.remove();
       return ok;
-    } catch (err) {
+    } catch {
       return false;
     }
   }
@@ -418,6 +438,8 @@ function init() {
     return svg;
   }
 
+  // One group per octet so the 32 bits cannot wrap mid-octet.
+  // The accessible name is the dotted string; the individual digits are hidden.
   function bitsNode(bits) {
     const wrap = document.createElement("p");
     wrap.className = "bits";
@@ -428,6 +450,7 @@ function init() {
       for (let bit = 0; bit < 8; bit += 1) {
         const index = octet * 8 + bit;
         const digit = document.createElement("span");
+        // Red once the bit is past the prefix. /32 has no host portion to mark.
         const isHost = bits.prefix !== null && bits.prefix < 32 && index >= bits.prefix;
         digit.className = isHost ? "bit bit-host" : "bit";
         digit.textContent = bits.text[index];
@@ -516,6 +539,7 @@ function init() {
     currentView = view;
   }
 
+  // Stored entries are data, not trusted markup: wrong shapes and odd characters are dropped.
   function loadHistory() {
     try {
       const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
@@ -531,7 +555,7 @@ function init() {
           );
         })
         .slice(0, HISTORY_LIMIT);
-    } catch (err) {
+    } catch {
       return [];
     }
   }
@@ -539,7 +563,7 @@ function init() {
   function saveHistory(items) {
     try {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, HISTORY_LIMIT)));
-    } catch (err) {
+    } catch {
       // Private mode and full storage still leave the calculation usable.
     }
   }
@@ -578,6 +602,7 @@ function init() {
     }
   }
 
+  // Newest first, and a repeat of the same query replaces the older copy.
   function remember(query) {
     const items = loadHistory().filter(function (item) {
       return item.q !== query;
@@ -634,6 +659,7 @@ function init() {
     setStatus(ok ? "Copied the summary" : "Copy failed");
   });
 
+  // Two clicks, so a stray tap does not wipe the list. The prompt resets itself.
   clearBtn.addEventListener("click", function () {
     if (!clearArmed) {
       clearArmed = true;
@@ -644,7 +670,7 @@ function init() {
     }
     try {
       localStorage.removeItem(HISTORY_KEY);
-    } catch (err) {
+    } catch {
       // Ignore storage failures and still clear the list on screen.
     }
     resetClear();
@@ -671,6 +697,8 @@ function systemPrefersDark() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
+// choice is light, dark, or system. data-theme is the resolved light or dark
+// actually painted, so the stylesheet never has to re-read the system preference.
 function applyTheme(choice) {
   const dark = choice === "dark" || (choice === "system" && systemPrefersDark());
   document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -680,6 +708,7 @@ function applyTheme(choice) {
   document.querySelectorAll("[data-theme-choice]").forEach(function (button) {
     button.setAttribute("aria-pressed", button.getAttribute("data-theme-choice") === choice ? "true" : "false");
   });
+  // The particle field listens for this and recolors without rebuilding.
   document.dispatchEvent(new Event("themechange"));
 }
 
@@ -694,7 +723,7 @@ function initTheme() {
     const choice = button.getAttribute("data-theme-choice");
     try {
       localStorage.setItem(THEME_KEY, choice);
-    } catch (err) {
+    } catch {
       // The theme still changes for this visit when storage is blocked.
     }
     applyTheme(choice);
@@ -704,6 +733,8 @@ function initTheme() {
   });
 }
 
+// A white glyph on a clear canvas. The point material tints it with the theme color,
+// which is why the source pixels are white rather than teal.
 function digitTexture(glyph) {
   const size = 128;
   const canvas = document.createElement("canvas");
@@ -729,6 +760,7 @@ function bitCloud(glyph, count) {
   for (let i = 0; i < count; i += 1) {
     positions[i * 3] = (Math.random() - 0.5) * 160;
     positions[i * 3 + 1] = (Math.random() - 0.5) * 90;
+    // Keep every glyph back from the camera so a near one cannot cover the text.
     positions[i * 3 + 2] = (Math.random() - 0.5) * 64 - 30;
   }
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -744,6 +776,8 @@ function bitCloud(glyph, count) {
   return new THREE.Points(geometry, material);
 }
 
+// Two clouds, one of 0 and one of 1, so each point is a single random bit.
+// Reduced motion draws a still frame. A hidden tab does not keep rotating.
 function startBackground() {
   const canvas = document.getElementById("bg3d");
   if (!canvas || typeof THREE === "undefined") return;
@@ -806,6 +840,7 @@ function startBackground() {
   });
 }
 
+// Absent under Node, so requiring this file from the tests does not touch the DOM.
 if (typeof document !== "undefined") {
   document.addEventListener("DOMContentLoaded", function () {
     init();
@@ -815,5 +850,5 @@ if (typeof document !== "undefined") {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { analyze, present, summarize };
+  module.exports = { analyze, present, summarize, init, initTheme, startBackground };
 }

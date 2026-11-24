@@ -11,11 +11,14 @@
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#ffffff" />
     <script>
+      // Apply the saved theme before first paint so the page does not flash the wrong colors.
       (function () {
         var choice = "system";
         try {
           choice = localStorage.getItem("ip_inspector_theme") || "system";
-        } catch (e) {}
+        } catch {
+          /* Storage can be blocked. The system default stays in place. */
+        }
         if (choice !== "light" && choice !== "dark") choice = "system";
         var dark =
           choice === "dark" ||
@@ -225,6 +228,7 @@
             id="query"
             class="hero-input mono"
             name="query"
+            type="text"
             placeholder="IP or CIDR"
             autocomplete="off"
             autocapitalize="off"
